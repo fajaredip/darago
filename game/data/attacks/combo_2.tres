@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="AttackData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/attack_data.gd" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+display_name = "Tebasan 2"
+active = 0.06
+recovery = 0.24
+hit_point = 0.2
+radius = 2.8
+arc_degrees = 130.0
+damage_multiplier = 1.1
+hitstop = 0.06
+hitstun = 0.35
+knockback = 2.5
+mana_gain = 3.0
+camera_shake = 0.05
+lunge_distance = 0.8
+startup = 0.145
+cancel_after = 0.25
+animation = &"ual2/Sword_Regular_B"
+anim_offset = 0.06
+anim_speed = 1.4
+recovery_animation = &"ual2/Sword_Regular_B_Rec"
+recovery_anim_speed = 1.4

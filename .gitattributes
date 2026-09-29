@@ -1,0 +1,8 @@
+# Godot files use LF line endings on every platform.
+* text=auto eol=lf
+# Windows batch files need CRLF.
+*.bat text eol=crlf
+*.png binary
+*.glb binary
+*.bin binary
+*.vrm binary

@@ -1,0 +1,56 @@
+[gd_resource type="Resource" script_class="PlayerStats" format=3]
+
+[ext_resource type="Script" path="res://scripts/player/player_stats.gd" id="1_stats"]
+[ext_resource type="Script" path="res://scripts/combat/attack_data.gd" id="2_attack"]
+[ext_resource type="Resource" path="res://data/attacks/combo_1.tres" id="3_c1"]
+[ext_resource type="Resource" path="res://data/attacks/combo_2.tres" id="4_c2"]
+[ext_resource type="Resource" path="res://data/attacks/combo_3.tres" id="5_c3"]
+[ext_resource type="Resource" path="res://data/attacks/skill_dash.tres" id="6_dash"]
+[ext_resource type="Resource" path="res://data/attacks/skill_whirl.tres" id="7_whirl"]
+[ext_resource type="Resource" path="res://data/attacks/heavy.tres" id="8_heavy"]
+[ext_resource type="Resource" path="res://data/attacks/air_1.tres" id="9_air1"]
+[ext_resource type="Resource" path="res://data/attacks/air_2.tres" id="10_air2"]
+[ext_resource type="Resource" path="res://data/attacks/air_plunge.tres" id="11_plunge"]
+[ext_resource type="PackedScene" path="res://assets/characters/warrior/warrior.vrm" id="12_model"]
+[ext_resource type="AnimationLibrary" path="res://assets/animations/ual1.glb" id="13_ual1"]
+[ext_resource type="AnimationLibrary" path="res://assets/animations/ual2.glb" id="14_ual2"]
+[ext_resource type="PackedScene" path="res://assets/kaykit/weapons/sword_2handed.gltf" id="15_sword"]
+
+[resource]
+script = ExtResource("1_stats")
+class_display_name = "Warrior"
+dodge_duration = 0.4
+dodge_iframes = 0.32
+combo = Array[ExtResource("2_attack")]([ExtResource("3_c1"), ExtResource("4_c2"), ExtResource("5_c3")])
+heavy = ExtResource("8_heavy")
+air_combo = Array[ExtResource("2_attack")]([ExtResource("9_air1"), ExtResource("10_air2")])
+air_heavy = ExtResource("11_plunge")
+skill_1 = ExtResource("6_dash")
+skill_2 = ExtResource("7_whirl")
+model = ExtResource("12_model")
+animation_libraries = {
+"ual1": ExtResource("13_ual1"),
+"ual2": ExtResource("14_ual2")
+}
+weapon = ExtResource("15_sword")
+weapon_bone = &"RightHand"
+weapon_position = Vector3(0.003, 0.042, 0.015)
+weapon_rotation = Vector3(-7.2, 0.6, -51.1)
+weapon_scale = 0.6
+weapon_trail_base = Vector3(0, 0.35, 0)
+weapon_trail_tip = Vector3(0, 1.95, 0)
+anim_idle = &"ual1/Sword_Idle"
+anim_run = &"ual1/Sprint"
+run_anim_reference_speed = 7.0
+anim_jump = &"ual1/Jump_Start"
+anim_jump_offset = 0.45
+anim_air = &"ual1/Jump"
+anim_land = &"ual1/Jump_Land"
+anim_land_offset = 0.15
+anim_dodge = &"ual1/Roll"
+anim_dodge_length = 0.9
+anim_hurt = &"ual1/Hit_Chest"
+anim_death = &"ual1/Death01"
+hold_pose_bones = PackedStringArray("RightShoulder", "RightUpperArm", "RightLowerArm", "RightHand")
+hold_pose_anim = &"ual1/Sword_Idle"
+hold_pose_time = 0.3

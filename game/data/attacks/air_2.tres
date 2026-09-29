@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="AttackData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/attack_data.gd" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+display_name = "Tebasan Udara 2"
+active = 0.07
+recovery = 0.3
+cancel_after = 0.25
+hit_point = 0.2
+radius = 2.6
+arc_degrees = 140.0
+height = 2.2
+damage_multiplier = 1.1
+hitstop = 0.07
+hitstun = 0.45
+knockback = 4.0
+knockdown = true
+mana_gain = 4.0
+camera_shake = 0.08
+lunge_distance = 0.4
+air_float = 1.5
+swing_sound = "swing_heavy"
+startup = 0.11
+animation = &"ual2/Sword_Regular_B"
+anim_offset = 0.08
+anim_speed = 1.6

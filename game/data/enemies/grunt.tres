@@ -1,0 +1,38 @@
+[gd_resource type="Resource" script_class="EnemyStats" format=3]
+
+[ext_resource type="Script" path="res://scripts/enemies/enemy_stats.gd" id="1_enemy"]
+[ext_resource type="PackedScene" path="res://assets/kaykit/skeletons/Skeleton_Minion.glb" id="2_model"]
+[ext_resource type="PackedScene" path="res://assets/kaykit/skeletons/Skeleton_Blade.gltf" id="3_weapon"]
+
+[resource]
+script = ExtResource("1_enemy")
+display_name = "Tengkorak"
+max_hp = 90.0
+attack_power = 28.0
+move_speed = 4.2
+attack_range = 1.9
+attack_radius = 2.3
+attack_arc = 100.0
+windup = 0.65
+attack_cooldown = 1.8
+recover_time = 0.6
+attack_knockback = 5.0
+size = 1.0
+color = Color(0.45, 0.72, 0.35, 1)
+model = ExtResource("2_model")
+model_scale = 0.8
+weapon = ExtResource("3_weapon")
+weapon_bone = &"handslot.r"
+anim_idle = &"Idle"
+anim_move = &"Running_A"
+move_anim_reference_speed = 4.5
+anim_attack = &"1H_Melee_Attack_Chop"
+attack_anim_contact = 0.45
+anim_hit = &"Hit_A"
+anim_air = &"Hit_B"
+anim_down = &"Death_A"
+anim_getup = &"Lie_StandUp"
+anim_getup_offset = 1.0
+anim_death = &"Death_C_Skeletons"
+anim_spawn = &"Spawn_Ground_Skeletons"
+anim_spawn_speed = 3.2

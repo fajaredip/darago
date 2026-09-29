@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="AttackData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/attack_data.gd" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+display_name = "Hantaman Terjun"
+startup = 0.12
+active = 0.08
+recovery = 0.35
+cancel_after = 0.35
+radius = 3.0
+arc_degrees = 360.0
+height = 1.5
+damage_multiplier = 1.6
+hitstop = 0.09
+hitstun = 0.5
+knockback = 6.0
+knockdown = true
+mana_gain = 5.0
+camera_shake = 0.3
+lunge_distance = 0.0
+plunge = true
+plunge_speed = 24.0
+impact_ring = true
+color = Color(1, 0.85, 0.5, 1)
+swing_sound = "thud"
+hit_sound = "hit_heavy"
+animation = &"ual1/Sword_Attack"
+anim_hold = 0.61
+land_anim_offset = 0.85
+anim_speed = 1.4

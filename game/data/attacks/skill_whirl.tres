@@ -1,0 +1,34 @@
+[gd_resource type="Resource" script_class="AttackData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/attack_data.gd" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+display_name = "Putaran Badai"
+startup = 0.12
+active = 0.45
+recovery = 0.3
+cancel_after = 0.6
+radius = 3.4
+arc_degrees = 360.0
+height = 2.5
+hits = 3
+hit_interval = 0.15
+damage_multiplier = 0.9
+hitstop = 0.04
+hitstun = 0.5
+knockback = 2.0
+launch = 7.5
+mana_gain = 0.0
+camera_shake = 0.08
+lunge_distance = 0.0
+super_armor = true
+mana_cost = 30.0
+cooldown = 8.0
+color = Color(1, 0.75, 0.3, 1)
+model_spins = 3
+swing_sound = "swing_heavy"
+animation = &"ual2/Sword_Regular_A"
+anim_hold = 0.3
+recovery_animation = &"ual2/Sword_Regular_A_Rec"
+recovery_anim_speed = 1.4

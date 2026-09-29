@@ -1,0 +1,10 @@
+# Godot engine binary (~180 MB, over GitHub's limit): download it, see README
+/tools/
+# Godot import cache, rebuilt automatically when the project is opened
+/game/.godot/
+# Local screenshots taken with "\" for chatting about the game
+/screenshots/
+# Local project-setting overrides
+/game/override.cfg
+# Private design notes (kept local)
+/I want to develop a 3D action RPG i.txt

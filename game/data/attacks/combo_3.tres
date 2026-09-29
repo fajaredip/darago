@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="AttackData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/attack_data.gd" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+display_name = "Tebasan Penutup"
+active = 0.08
+recovery = 0.4
+hit_point = 0.2
+radius = 3.2
+arc_degrees = 200.0
+damage_multiplier = 1.8
+hitstop = 0.11
+hitstun = 0.6
+knockback = 9.0
+knockdown = true
+mana_gain = 6.0
+camera_shake = 0.18
+lunge_distance = 1.4
+color = Color(1, 1, 0.95, 1)
+swing_sound = "swing_heavy"
+hit_sound = "hit_heavy"
+startup = 0.34
+cancel_after = 0.55
+animation = &"ual2/Sword_Regular_C"
+anim_offset = 0.15
+anim_speed = 1.7

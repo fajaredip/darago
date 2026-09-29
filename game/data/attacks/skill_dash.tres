@@ -1,0 +1,32 @@
+[gd_resource type="Resource" script_class="AttackData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/attack_data.gd" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+display_name = "Tebasan Terjang"
+startup = 0.05
+active = 0.22
+recovery = 0.3
+cancel_after = 0.35
+radius = 2.0
+arc_degrees = 360.0
+height = 2.0
+damage_multiplier = 2.2
+hitstop = 0.08
+hitstun = 0.5
+knockback = 6.0
+push_along_facing = true
+mana_gain = 0.0
+camera_shake = 0.15
+lunge_distance = 7.5
+pass_through = true
+iframes = 0.3
+mana_cost = 20.0
+cooldown = 5.0
+color = Color(1, 0.9, 0.65, 1)
+swing_sound = "swing_heavy"
+hit_sound = "hit_heavy"
+animation = &"ual2/Sword_Dash_RM"
+anim_offset = 0.28
+anim_speed = 1.5
