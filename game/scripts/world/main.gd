@@ -4,6 +4,8 @@ extends Node3D
 
 const GRUNT := preload("res://data/enemies/grunt.tres")
 const BRUTE := preload("res://data/enemies/brute.tres")
+const MUSIC_BATTLE := "res://assets/audio/music/battle_determined_pursuit.ogg"
+const AMBIENCE := "res://assets/audio/music/ambience_forgotten_tomb.ogg"
 
 ## Tiap gelombang: x = jumlah Tengkorak, y = jumlah Tengkorak Raksasa.
 @export var waves: Array[Vector2i] = [Vector2i(3, 0), Vector2i(4, 1), Vector2i(5, 2)]
@@ -20,6 +22,7 @@ func _ready() -> void:
 	Engine.time_scale = 1.0
 	_rng.randomize()
 	Game.level = self
+	Sfx.play_ambience(AMBIENCE)
 	var effects := Node3D.new()
 	effects.name = "Effects"
 	effects.physics_interpolation_mode = Node.PHYSICS_INTERPOLATION_MODE_OFF
@@ -42,6 +45,9 @@ func _ready() -> void:
 	rig.follow(player)
 	hud = Hud.new()
 	add_child(hud)
+	var menu := SettingsMenu.new()
+	menu.name = "SettingsMenu"
+	add_child(menu)
 	get_tree().create_timer(1.0).timeout.connect(_next_wave)
 
 
@@ -86,7 +92,9 @@ func _next_wave() -> void:
 		_ogre_tip_shown = true
 		tip = "Tips: hantaman kapak Tengkorak Raksasa bisa dihindari dengan lompat (Spasi)"
 	hud.announce("Gelombang %d / %d" % [_wave + 1, waves.size()], tip)
-	Sfx.play("wave", -6.0)
+	Sfx.play("wave")
+	if _wave == 0:
+		Sfx.play_music(MUSIC_BATTLE)
 	var points := _spawn_points(wave.x + wave.y)
 	for i in points.size():
 		_spawn(GRUNT if i < wave.x else BRUTE, points[i])
@@ -127,10 +135,12 @@ func _on_player_died() -> void:
 	if _finished:
 		return
 	_finished = true
+	Sfx.stop_music()
 	hud.show_result("KALAH", "Tekan R untuk coba lagi", Color(1.0, 0.4, 0.35))
 
 
 func _win() -> void:
 	_finished = true
+	Sfx.stop_music()
 	Sfx.play("wave")
 	hud.show_result("MENANG!", "Semua gelombang dikalahkan. Tekan R untuk main lagi", Color(1.0, 0.85, 0.35))

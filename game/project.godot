@@ -17,6 +17,7 @@ config/features=PackedStringArray("4.7", "Mobile")
 
 [autoload]
 
+Settings="*res://scripts/core/settings.gd"
 Game="*res://scripts/core/game.gd"
 Sfx="*res://scripts/core/sfx.gd"
 Screenshot="*res://scripts/core/screenshot.gd"

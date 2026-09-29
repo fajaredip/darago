@@ -30,3 +30,4 @@ hit_sound = "hit_heavy"
 animation = &"ual2/Sword_Dash_RM"
 anim_offset = 0.28
 anim_speed = 1.5
+voice = true

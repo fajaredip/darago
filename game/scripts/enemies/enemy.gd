@@ -201,7 +201,7 @@ func _start_windup() -> void:
 	_telegraph.visible = true
 	_telegraph_fill.scale = Vector3.ONE * 0.01
 	if stats.heavy:
-		Sfx.play("telegraph", -8.0)
+		Sfx.play("telegraph", 0.0, 0.06, global_position)
 
 
 func _windup(delta: float) -> void:
@@ -231,7 +231,7 @@ func _perform_attack() -> void:
 		Vfx.ring(global_position + Vector3.UP * 0.1, stats.attack_radius, Color(1.0, 0.35, 0.2), 0.35)
 	if stats.heavy:
 		Game.shake(0.15)
-	Sfx.play("swing_heavy" if stats.heavy else "swing", -4.0)
+	Sfx.play("swing_heavy" if stats.heavy else "swing", 0.0, 0.08, global_position)
 	_set_state(State.RECOVER)
 	_attack_cd = stats.attack_cooldown * _rng.randf_range(0.7, 1.3)
 
@@ -257,7 +257,7 @@ func _land() -> void:
 		_knockdown_pending = false
 		_set_state(State.DOWN)
 		Vfx.ring(global_position + Vector3.UP * 0.05, 1.2 * stats.size, Color(0.9, 0.85, 0.7, 0.6), 0.3)
-		Sfx.play("thud", -6.0)
+		Sfx.play("thud", 0.0, 0.08, global_position)
 	else:
 		_stun_time = 0.2
 		_set_state(State.HITSTUN)
@@ -270,7 +270,7 @@ func _die(push: Vector3) -> void:
 	collision_mask = Game.LAYER_WORLD
 	_telegraph.visible = false
 	velocity = push + Vector3.UP * 5.0
-	Sfx.play("enemy_die", -4.0)
+	Sfx.play("enemy_die", 0.0, 0.1, global_position)
 	died.emit(self)
 
 

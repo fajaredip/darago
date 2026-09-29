@@ -3,13 +3,13 @@ extends CanvasLayer
 ## Prototype HUD built in code: HP/MP bars, skill cooldowns, enemy health
 ## bars, combo counter, wave announcements and the win / lose screen.
 
-const HELP_TEXT := "WASD: gerak    Mouse: kamera    Klik kiri: serang (tahan = combo)    Klik kanan: serangan berat    Spasi: lompat\nTekan arah 2x cepat / Shift: dodge    1 / 2: skill    Di udara: klik kiri / kanan    Tahan Alt: kursor    Esc: lepas mouse    \\ : screenshot"
 
 
 class Slot:
 	var panel: Panel
 	var cover: ColorRect
 	var name_label: Label
+	var key_label: Label
 	var cooldown_label: Label
 
 
@@ -26,6 +26,7 @@ var _result_title: Label
 var _result_sub: Label
 var _bars: Control
 var _toast: Label
+var _help: Label
 var _shown_combo := 0
 
 
@@ -102,10 +103,12 @@ func _ready() -> void:
 	_result_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_result.add_child(_result_sub)
 
-	var help := _label(14, Color(1, 1, 1, 0.75), 4)
-	help.text = HELP_TEXT
-	_anchor(help, 0.0, 0.0, 0.0, 0.0, 16.0, 10.0, 900.0, 56.0)
-	root.add_child(help)
+	_help = _label(14, Color(1, 1, 1, 0.75), 4)
+
+	_anchor(_help, 0.0, 0.0, 0.0, 0.0, 16.0, 10.0, 900.0, 56.0)
+	root.add_child(_help)
+	Settings.changed.connect(_refresh_key_hints)
+	_refresh_key_hints()
 	_warm_up_fonts()
 
 
@@ -135,10 +138,29 @@ func _warm_up_fonts() -> void:
 		_result.visible = false
 
 
+## Help line and skill-slot keys follow the player's current key bindings.
+func _refresh_key_hints() -> void:
+	var s := Settings
+	var move := PackedStringArray([s.key_name(&"move_forward"), s.key_name(&"move_left"),
+			s.key_name(&"move_back"), s.key_name(&"move_right")])
+	var single := true
+	for k in move:
+		single = single and k.length() == 1
+	var move_text := "".join(move) if single else "/".join(move)
+	_help.text = ("%s: gerak    Mouse: kamera    %s: serang (tahan = combo)    %s: serangan berat    %s: lompat\n"
+			+ "Tekan arah 2x cepat / %s: dodge    %s / %s: skill    Di udara: %s / %s    Tahan %s: kursor    Esc: menu    %s: screenshot") % [
+			move_text, s.key_name(&"attack"), s.key_name(&"heavy"), s.key_name(&"jump"), s.key_name(&"dodge"),
+			s.key_name(&"skill_1"), s.key_name(&"skill_2"), s.key_name(&"attack"), s.key_name(&"heavy"),
+			s.key_name(&"show_cursor"), s.key_name(&"screenshot")]
+	if _slots.size() >= 2:
+		_slots[0].key_label.text = s.key_name(&"skill_1")
+		_slots[1].key_label.text = s.key_name(&"skill_2")
+
+
 ## Short message at the top of the screen (e.g. "screenshot copied").
 func toast(text: String) -> void:
 	_toast.text = text
-	var tw := create_tween()
+	var tw := create_tween().set_pause_mode(Tween.TWEEN_PAUSE_PROCESS)  # also while the menu pauses the game
 	tw.tween_property(_toast, "modulate:a", 1.0, 0.15).from(0.0)
 	tw.tween_interval(1.8)
 	tw.tween_property(_toast, "modulate:a", 0.0, 0.4)
@@ -251,10 +273,10 @@ func _make_slot(parent: Control, key: String, title: String, color: Color) -> Sl
 	_anchor(slot.name_label, 0.0, 0.0, 1.0, 1.0, 4.0, 4.0, -4.0, -6.0)
 	slot.panel.add_child(slot.name_label)
 
-	var key_label := _label(16, color.lightened(0.4), 4)
-	key_label.text = key
-	_anchor(key_label, 0.0, 0.0, 1.0, 1.0, 7.0, 3.0, 0.0, 0.0)
-	slot.panel.add_child(key_label)
+	slot.key_label = _label(16, color.lightened(0.4), 4)
+	slot.key_label.text = key
+	_anchor(slot.key_label, 0.0, 0.0, 1.0, 1.0, 7.0, 3.0, 0.0, 0.0)
+	slot.panel.add_child(slot.key_label)
 
 	slot.cover = ColorRect.new()
 	slot.cover.color = Color(0, 0, 0, 0.65)

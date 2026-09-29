@@ -99,3 +99,5 @@ extends Resource
 @export var model_spins := 0
 @export var swing_sound := "swing"
 @export var hit_sound := "hit"
+## Karakter berteriak saat mengayun (untuk serangan besar dan skill).
+@export var voice := false

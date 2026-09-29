@@ -12,6 +12,8 @@ enum State { FREE, ATTACK, DODGE, HURT, DEAD }
 
 const BODY_RADIUS := 0.4
 const COMBO_GRACE := 0.35
+## Metres between footstep sounds while running.
+const STEP_LENGTH := 1.9
 ## Directions that dodge when tapped twice: [input action, move input].
 const TAP_DIRECTIONS := [
 	[&"move_forward", Vector2(0, -1)],
@@ -55,6 +57,7 @@ var _hurt_flash := 0.0
 var _recovery_anim_started := false
 ## While > 0 the landing animation plays before idle/run take over.
 var _land_anim_left := 0.0
+var _step_distance := 0.0
 var _air_combo := 0
 var _air_heavy_used := false
 var _was_on_floor := true
@@ -126,7 +129,7 @@ func take_hit(amount: float, from_pos: Vector3, knockback: float) -> bool:
 	_hurt_flash = 1.0
 	_hitstop = 0.07
 	Vfx.damage_number(global_position + Vector3.UP * 2.0, dmg, Color(1.0, 0.35, 0.3))
-	Sfx.play("hurt", -3.0)
+	Sfx.play("hurt")
 	Game.shake(0.3)
 	if hp <= 0.0:
 		_die()
@@ -286,7 +289,7 @@ func _try_buffered(can_act: bool, can_dodge: bool) -> bool:
 			_consume_buffer()
 			if skill == null or skill_cooldowns[i] > 0.0 or mana < skill.mana_cost:
 				skill_denied_time[i] = 0.4
-				Sfx.play("deny", -10.0)
+				Sfx.play("deny")
 				return false
 			mana -= skill.mana_cost
 			skill_cooldowns[i] = skill.cooldown
@@ -406,7 +409,7 @@ func _jump() -> void:
 	_squash = -0.06
 	_land_anim_left = 0.0
 	_rig.play(stats.anim_jump, 0.08, 1.6, stats.anim_jump_offset)
-	Sfx.play("jump", -8.0)
+	Sfx.play("jump")
 	Vfx.ring(global_position + Vector3.UP * 0.05, 0.9, Color(0.85, 0.8, 0.7, 0.4), 0.2)
 
 
@@ -416,7 +419,7 @@ func _on_landed(fall_speed: float) -> void:
 	if fall_speed > 4.0:
 		_squash = clampf(fall_speed / 120.0, 0.02, 0.08)
 		Vfx.ring(global_position + Vector3.UP * 0.05, 1.0, Color(0.85, 0.8, 0.7, 0.5), 0.25)
-		Sfx.play("thud", -16.0)
+		Sfx.play("thud", -10.0)
 	if state == State.ATTACK:
 		if _attack.plunge:
 			_plunge_landed = true
@@ -451,7 +454,7 @@ func _start_dodge() -> void:
 	_combo_index = -1
 	collision_mask = Game.LAYER_WORLD
 	_rig.play(stats.anim_dodge, 0.05, stats.anim_dodge_length / stats.dodge_duration, 0.0)
-	Sfx.play("dodge", -4.0)
+	Sfx.play("dodge")
 	Vfx.ring(global_position + Vector3.UP * 0.05, 1.3, Color(0.85, 0.8, 0.7, 0.45), 0.3)
 
 
@@ -496,7 +499,7 @@ func _process_hits(a: AttackData) -> void:
 	if landed:
 		_hitstop = maxf(_hitstop, a.hitstop)
 		Game.shake(a.camera_shake)
-		Sfx.play(a.hit_sound, -2.0)
+		Sfx.play(a.hit_sound)
 
 
 func _spawn_impact(a: AttackData) -> void:
@@ -506,7 +509,9 @@ func _spawn_impact(a: AttackData) -> void:
 
 
 func _spawn_swing_fx(a: AttackData) -> void:
-	Sfx.play(a.swing_sound, -6.0)
+	Sfx.play(a.swing_sound)
+	if a.voice:
+		Sfx.play("effort")
 
 
 func _tick_timers(delta: float) -> void:
@@ -593,7 +598,7 @@ func _update_visuals(delta: float) -> void:
 	var spin := false
 	match state:
 		State.FREE:
-			_update_locomotion()
+			_update_locomotion(delta)
 			var move := Vector3(velocity.x, 0.0, velocity.z)
 			if is_on_floor() and move.length() > 1.0:
 				# Only forward-running clips exist: turn the body toward the run
@@ -626,8 +631,8 @@ func _update_visuals(delta: float) -> void:
 	_arm_hold.influence = move_toward(_arm_hold.influence, 1.0 if moving else 0.0, delta * (8.0 if moving else 24.0))
 
 
-## Idle / run / air animations while the player is free to move.
-func _update_locomotion() -> void:
+## Idle / run / air animations while the player is free to move, plus footsteps.
+func _update_locomotion(delta: float) -> void:
 	if not is_on_floor():
 		if velocity.y < 0.0 or _rig.current() != stats.anim_jump:
 			_rig.play(stats.anim_air, 0.2)
@@ -637,8 +642,13 @@ func _update_locomotion() -> void:
 	var speed := Vector2(velocity.x, velocity.z).length()
 	if speed > 0.8:
 		_rig.play(stats.anim_run, 0.15, clampf(speed / stats.run_anim_reference_speed, 0.5, 1.4))
+		_step_distance += speed * delta
+		if _step_distance >= STEP_LENGTH:
+			_step_distance = 0.0
+			Sfx.play("footstep", 0.0, 0.1)
 	else:
 		_rig.play(stats.anim_idle, 0.2)
+		_step_distance = STEP_LENGTH * 0.6  # first step comes quickly
 
 
 func _build_body() -> void:

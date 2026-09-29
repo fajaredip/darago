@@ -31,3 +31,4 @@ anim_offset = 0.0
 anim_speed = 1.0
 recovery_animation = &"ual2/Sword_Regular_B_Rec"
 recovery_anim_speed = 1.3
+voice = true

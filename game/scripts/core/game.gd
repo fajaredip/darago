@@ -1,5 +1,5 @@
 extends Node
-## Autoload "Game": input actions, collision layers, shared references
+## Autoload "Game": collision layers, shared references
 ## (player, camera, effect container) and global time effects.
 
 const LAYER_WORLD := 1
@@ -33,7 +33,6 @@ func _enter_tree() -> void:
 	# (60 fps cap measured smooth: worst frame 17 ms).
 	var hz := DisplayServer.screen_get_refresh_rate()
 	Engine.max_fps = roundi(hz) if hz > 0.0 else 60
-	_setup_input()
 
 
 func _ready() -> void:
@@ -56,38 +55,3 @@ func slow_motion(scale: float, real_seconds: float) -> void:
 	Engine.time_scale = scale
 	await get_tree().create_timer(real_seconds, true, false, true).timeout
 	Engine.time_scale = 1.0
-
-
-func _setup_input() -> void:
-	_bind_keys(&"move_forward", [KEY_W, KEY_UP])
-	_bind_keys(&"move_back", [KEY_S, KEY_DOWN])
-	_bind_keys(&"move_left", [KEY_A, KEY_LEFT])
-	_bind_keys(&"move_right", [KEY_D, KEY_RIGHT])
-	_bind_keys(&"jump", [KEY_SPACE])
-	# Main dodge is double-tapping a direction (see Player); Shift is a backup.
-	_bind_keys(&"dodge", [KEY_SHIFT])
-	_bind_keys(&"skill_1", [KEY_1, KEY_Q])
-	_bind_keys(&"skill_2", [KEY_2, KEY_E])
-	_bind_keys(&"restart", [KEY_R])
-	_bind_keys(&"toggle_mouse", [KEY_ESCAPE])
-	_bind_keys(&"show_cursor", [KEY_ALT])
-	_bind_keys(&"screenshot", [KEY_BACKSLASH])
-	_bind_mouse(&"attack", MOUSE_BUTTON_LEFT)
-	_bind_mouse(&"heavy", MOUSE_BUTTON_RIGHT)
-
-
-func _bind_keys(action: StringName, keys: Array) -> void:
-	if not InputMap.has_action(action):
-		InputMap.add_action(action)
-	for key in keys:
-		var ev := InputEventKey.new()
-		ev.physical_keycode = key
-		InputMap.action_add_event(action, ev)
-
-
-func _bind_mouse(action: StringName, button: MouseButton) -> void:
-	if not InputMap.has_action(action):
-		InputMap.add_action(action)
-	var ev := InputEventMouseButton.new()
-	ev.button_index = button
-	InputMap.action_add_event(action, ev)

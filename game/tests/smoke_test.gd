@@ -29,6 +29,13 @@ func _run() -> void:
 	await _frames(150)
 	var enemies := _enemies()
 	_check(enemies.size() == 3, "wave 1 spawned 3 enemies (got %d)" % enemies.size())
+	var missing := PackedStringArray()
+	for event in Sfx.EVENTS:
+		for layer in Sfx.EVENTS[event]:
+			if Sfx._banks.get(layer[0], []).is_empty():
+				missing.append("%s/%s" % [event, layer[0]])
+	_check(missing.is_empty(), "every sound event has samples (missing: %s)" % ", ".join(missing))
+	_check(Sfx._music.playing and Sfx._ambience.playing, "battle music and ambience play after wave 1")
 	await _shot("01_wave1")
 	if enemies.size() < 3:
 		_finish()
@@ -223,10 +230,59 @@ func _run() -> void:
 	# The "\" screenshot feature (needs a real renderer; skipped headless).
 	if _shots != "":
 		var png: String = await Screenshot.capture(_shots.path_join("feature"))
-		await _frames(30)  # the PNG is written on a worker thread
+		# The PNG is written on a worker thread: wait for it in real time, not frames.
+		for i in 30:
+			if png != "" and FileAccess.file_exists(png.get_basename() + ".txt"):
+				break
+			await get_tree().create_timer(0.1, true, false, true).timeout
 		_check(png != "" and FileAccess.file_exists(png), "screenshot key saves a PNG")
 		var note := FileAccess.get_file_as_string(png.get_basename() + ".txt")
 		_check(note.contains("Pemain Warrior") and note.contains("Level:"), "screenshot saves a context note")
+
+	# Esc menu and settings (saved to a scratch file, never the player's own).
+	Settings.use_file("user://settings_smoke_test.cfg")
+	var menu: SettingsMenu = get_tree().current_scene.get_node("SettingsMenu")
+	var esc := InputEventKey.new()
+	esc.physical_keycode = KEY_ESCAPE
+	esc.pressed = true
+	Input.parse_input_event(esc)
+	await _frames(3)
+	_check(menu.is_open() and get_tree().paused, "Esc opens the menu and pauses the game")
+	await _shot("11_menu")
+	menu._show_page("controls")
+	menu._start_listening(&"jump", 1)
+	var key_f := InputEventKey.new()
+	key_f.physical_keycode = KEY_F
+	key_f.pressed = true
+	Input.parse_input_event(key_f)
+	await _frames(3)
+	var jump_keys := InputMap.action_get_events(&"jump").map(func(e: InputEvent) -> String: return Settings.code_from_event(e))
+	_check("key:%d" % KEY_F in jump_keys, "rebinding a key through the menu updates the controls")
+	await _shot("12_controls")
+	var taken := Settings.set_binding(&"skill_1", 0, "key:%d" % KEY_F)
+	_check(taken == &"jump" and Settings.bindings[&"jump"][1] == "", "a key can only be bound to one action")
+	Settings.set_mouse_sensitivity(1.7)
+	Settings.set_volume(&"Music", 0.5)
+	var music_db := AudioServer.get_bus_volume_db(AudioServer.get_bus_index(&"Music"))
+	_check(absf(music_db - linear_to_db(0.5)) < 0.1, "music volume slider changes the Music bus")
+	Settings.mouse_sensitivity = 1.0
+	Settings.load_file()
+	_check(is_equal_approx(Settings.mouse_sensitivity, 1.7) and Settings.bindings[&"skill_1"][0] == "key:%d" % KEY_F,
+			"settings are saved and loaded back")
+	menu._show_page("game")
+	await _frames(2)
+	await _shot("13_game")
+	var hud: Hud = get_tree().get_first_node_in_group("hud")
+	hud.toast("tes")
+	await _frames(20)
+	_check(hud._toast.modulate.a > 0.9, "messages still show while the menu pauses the game")
+	Settings.reset_to_defaults()
+	_check(Settings.key_name(&"screenshot") == "\\", "the screenshot key is shown as \\ (got %s)" % Settings.key_name(&"screenshot"))
+	_check(Settings.bindings[&"jump"][0] == "key:%d" % KEY_SPACE and is_equal_approx(Settings.volumes[&"Music"], 1.0),
+			"reset restores default keys and volumes")
+	menu.close()
+	await _frames(2)
+	_check(not menu.is_open() and not get_tree().paused, "closing the menu resumes the game")
 	_finish()
 
 

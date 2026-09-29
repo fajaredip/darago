@@ -1,113 +1,172 @@
 extends Node
-## Autoload "Sfx": placeholder sound effects synthesized in code at startup,
-## so the prototype has impact audio without any sound files.
+## Autoload "Sfx": sound effects built from CC0 samples (see CREDITS.md) and the
+## music / ambience players.
+##
+## Each event plays one random sample from every layer it lists, so hits can
+## stack a blade slash with a body impact and repeated swings never sound the
+## same twice. Pass a world position to make a sound come from that spot.
 
-const MIX_RATE := 22050
-const VOICES := 16
+const SFX_DIR := "res://assets/audio/sfx/"
+## event -> layers of [sample-name prefix, volume dB]
+const EVENTS := {
+	"swing": [["swing_light", -5.0]],
+	"swing_heavy": [["swing_heavy", -3.0]],
+	"hit": [["slash", -9.0], ["punch_medium", -3.0], ["bone_break", -12.0]],
+	"hit_heavy": [["slash", -6.0], ["punch_heavy", -1.0], ["bone_heavy", -6.0]],
+	"thud": [["thud", -5.0]],
+	"hurt": [["voice_hurt", -4.0], ["punch_medium", -7.0]],
+	"effort": [["voice_effort", -7.0]],
+	"enemy_die": [["bone_break", -3.0], ["clatter", -5.0]],
+	"telegraph": [["clash", -11.0]],
+	"wave": [["bell", -6.0]],
+	"deny": [["click", -12.0]],
+	"jump": [["cloth", -12.0]],
+	"dodge": [["swing_light", -10.0], ["cloth", -9.0]],
+	"footstep": [["step", -19.0]],
+}
+const VOICES_2D := 16
+const VOICES_3D := 12
 
-var _sounds := {}
-var _players: Array[AudioStreamPlayer] = []
-var _next := 0
+var _banks := {}  # prefix -> Array[AudioStream]
+var _last := {}  # prefix -> index played last time (avoid instant repeats)
+var _players_2d: Array[AudioStreamPlayer] = []
+var _players_3d: Array[AudioStreamPlayer3D] = []
+var _next_2d := 0
+var _next_3d := 0
+var _music: AudioStreamPlayer
+var _ambience: AudioStreamPlayer
+var _music_tween: Tween
 var _rng := RandomNumberGenerator.new()
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	_rng.seed = 7
-	_sounds["swing"] = _whoosh(0.15, 0.35, 0.55)
-	_sounds["swing_heavy"] = _whoosh(0.24, 0.2, 0.8)
-	_sounds["dodge"] = _whoosh(0.2, 0.12, 0.45)
-	_sounds["jump"] = _whoosh(0.12, 0.3, 0.35)
-	_sounds["hit"] = _impact(0.13, 120.0, 0.9, 1.0)
-	_sounds["hit_heavy"] = _impact(0.28, 70.0, 1.0, 0.7)
-	_sounds["thud"] = _impact(0.2, 55.0, 0.8, 0.2)
-	_sounds["hurt"] = _tone(0.22, 260.0, 90.0, 0.5, 0.5)
-	_sounds["enemy_die"] = _tone(0.4, 420.0, 70.0, 0.45, 0.2)
-	_sounds["telegraph"] = _tone(0.3, 180.0, 360.0, 0.35, 0.0)
-	_sounds["wave"] = _tone(0.6, 330.0, 660.0, 0.3, 0.0)
-	_sounds["deny"] = _tone(0.1, 160.0, 140.0, 0.3, 0.0)
-	for i in VOICES:
+	_rng.randomize()
+	_ensure_bus(&"SFX")
+	_ensure_bus(&"Music")
+	_load_banks()
+	for i in VOICES_2D:
 		var p := AudioStreamPlayer.new()
+		p.bus = &"SFX"
 		add_child(p)
-		_players.append(p)
+		_players_2d.append(p)
+	for i in VOICES_3D:
+		var p := AudioStreamPlayer3D.new()
+		p.bus = &"SFX"
+		p.unit_size = 8.0
+		p.max_distance = 45.0
+		add_child(p)
+		_players_3d.append(p)
+	_music = AudioStreamPlayer.new()
+	_music.bus = &"Music"
+	add_child(_music)
+	_ambience = AudioStreamPlayer.new()
+	_ambience.bus = &"Music"
+	add_child(_ambience)
 
 
 func _exit_tree() -> void:
-	for p in _players:
+	for p in _players_2d:
 		p.stop()
 		p.stream = null
-	_sounds.clear()
+	for p in _players_3d:
+		p.stop()
+		p.stream = null
+	if _music_tween:
+		_music_tween.kill()
+	for p in [_music, _ambience]:
+		p.stop()
+		p.stream = null
+	_banks.clear()
 
 
-func play(sound: String, volume_db := 0.0, pitch_jitter := 0.08) -> void:
-	if not _sounds.has(sound):
+## Plays `event`. With `at` (a Vector3) the sound is positioned in the world.
+func play(event: String, volume_db := 0.0, pitch_jitter := 0.06, at: Variant = null) -> void:
+	if not EVENTS.has(event):
 		return
-	var p := _players[_next]
-	_next = (_next + 1) % VOICES
-	p.stream = _sounds[sound]
+	var pitch := 1.0 + _rng.randf_range(-pitch_jitter, pitch_jitter)
+	for layer in EVENTS[event]:
+		var stream := _pick(layer[0])
+		if stream == null:
+			continue
+		if at is Vector3:
+			var p := _players_3d[_next_3d]
+			_next_3d = (_next_3d + 1) % VOICES_3D
+			p.global_position = at
+			_start(p, stream, float(layer[1]) + volume_db, pitch)
+		else:
+			var p := _players_2d[_next_2d]
+			_next_2d = (_next_2d + 1) % VOICES_2D
+			_start(p, stream, float(layer[1]) + volume_db, pitch)
+
+
+## Crossfades to a looping music track (null / "" fades the music out).
+func play_music(path: String, volume_db := -12.0, fade := 1.5) -> void:
+	if _music_tween:
+		_music_tween.kill()
+	_music_tween = create_tween()
+	if _music.playing:
+		_music_tween.tween_property(_music, "volume_db", -40.0, fade * 0.5)
+	if path == "":
+		_music_tween.tween_callback(_music.stop)
+		return
+	var stream := _looping(path)
+	_music_tween.tween_callback(func() -> void:
+		_music.stream = stream
+		_music.volume_db = -40.0
+		_music.play())
+	_music_tween.tween_property(_music, "volume_db", volume_db, fade)
+
+
+func stop_music(fade := 2.0) -> void:
+	play_music("", -40.0, fade * 2.0)
+
+
+func play_ambience(path: String, volume_db := -24.0) -> void:
+	_ambience.stream = _looping(path)
+	_ambience.volume_db = volume_db
+	_ambience.play()
+
+
+func _start(p: Node, stream: AudioStream, volume_db: float, pitch: float) -> void:
+	p.stream = stream
 	p.volume_db = volume_db
-	p.pitch_scale = 1.0 + _rng.randf_range(-pitch_jitter, pitch_jitter)
+	p.pitch_scale = pitch
 	p.play()
 
 
-## Filtered noise swelling up and down: sword swings, dodges.
-func _whoosh(duration: float, brightness: float, volume: float) -> AudioStreamWAV:
-	var n := int(duration * MIX_RATE)
-	var out := PackedFloat32Array()
-	out.resize(n)
-	var lp := 0.0
-	var gain := sqrt((2.0 - brightness) / brightness)
-	for i in n:
-		var t := float(i) / n
-		var env := pow(sin(PI * pow(t, 0.6)), 2.0)
-		var a := brightness * (0.4 + 0.6 * sin(PI * t))
-		lp += (_rng.randf_range(-1.0, 1.0) - lp) * a
-		out[i] = lp * gain * env * volume * 0.5
-	return _to_wav(out)
+func _pick(prefix: String) -> AudioStream:
+	var bank: Array = _banks.get(prefix, [])
+	if bank.is_empty():
+		return null
+	var i := _rng.randi_range(0, bank.size() - 1)
+	if bank.size() > 1 and i == _last.get(prefix, -1):
+		i = (i + 1) % bank.size()
+	_last[prefix] = i
+	return bank[i]
 
 
-## Pitched-down thump plus a noise crack: hits and landings.
-func _impact(duration: float, freq: float, volume: float, crack: float) -> AudioStreamWAV:
-	var n := int(duration * MIX_RATE)
-	var out := PackedFloat32Array()
-	out.resize(n)
-	var phase := 0.0
-	var lp := 0.0
-	for i in n:
-		var t := float(i) / MIX_RATE
-		phase += TAU * freq * (1.0 + 2.0 * exp(-t * 35.0)) / MIX_RATE
-		var thump := sin(phase) * exp(-t * 14.0)
-		lp += (_rng.randf_range(-1.0, 1.0) - lp) * 0.5
-		var noise := lp * exp(-t * 45.0) * crack * 1.6
-		var fade := clampf((duration - t) / 0.02, 0.0, 1.0)
-		out[i] = (thump * 0.9 + noise) * volume * fade
-	return _to_wav(out)
+## Groups sample files by name prefix: "swing_heavy_3.ogg" -> "swing_heavy".
+func _load_banks() -> void:
+	for file in ResourceLoader.list_directory(SFX_DIR):
+		if not file.ends_with(".ogg"):
+			continue
+		var base := file.get_basename()
+		var prefix := base.substr(0, base.rfind("_"))
+		if not _banks.has(prefix):
+			_banks[prefix] = []
+		_banks[prefix].append(load(SFX_DIR + file))
 
 
-## Frequency sweep with optional grit: cues, hurt, death.
-func _tone(duration: float, f0: float, f1: float, volume: float, grit: float) -> AudioStreamWAV:
-	var n := int(duration * MIX_RATE)
-	var out := PackedFloat32Array()
-	out.resize(n)
-	var phase := 0.0
-	for i in n:
-		var k := float(i) / n
-		phase += TAU * lerpf(f0, f1, k) / MIX_RATE
-		var s := sin(phase) * 0.7 + signf(sin(phase)) * 0.3
-		s += _rng.randf_range(-1.0, 1.0) * grit
-		var env := minf(1.0, k * 40.0) * pow(1.0 - k, 1.5)
-		out[i] = s * env * volume
-	return _to_wav(out)
+func _looping(path: String) -> AudioStream:
+	var stream: AudioStream = load(path)
+	if stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = true
+	return stream
 
 
-func _to_wav(samples: PackedFloat32Array) -> AudioStreamWAV:
-	var data := PackedByteArray()
-	data.resize(samples.size() * 2)
-	for i in samples.size():
-		data.encode_s16(i * 2, int(clampf(samples[i], -1.0, 1.0) * 32767.0))
-	var wav := AudioStreamWAV.new()
-	wav.format = AudioStreamWAV.FORMAT_16_BITS
-	wav.mix_rate = MIX_RATE
-	wav.stereo = false
-	wav.data = data
-	return wav
+func _ensure_bus(bus_name: StringName) -> void:
+	if AudioServer.get_bus_index(bus_name) == -1:
+		AudioServer.add_bus()
+		AudioServer.set_bus_name(AudioServer.bus_count - 1, bus_name)
+		AudioServer.set_bus_send(AudioServer.bus_count - 1, &"Master")

@@ -32,3 +32,4 @@ animation = &"ual2/Sword_Regular_A"
 anim_hold = 0.3
 recovery_animation = &"ual2/Sword_Regular_A_Rec"
 recovery_anim_speed = 1.4
+voice = true

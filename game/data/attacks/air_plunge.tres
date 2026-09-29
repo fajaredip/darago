@@ -30,3 +30,4 @@ animation = &"ual1/Sword_Attack"
 anim_hold = 0.61
 land_anim_offset = 0.85
 anim_speed = 1.4
+voice = true

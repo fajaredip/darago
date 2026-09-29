@@ -26,3 +26,4 @@ cancel_after = 0.55
 animation = &"ual2/Sword_Regular_C"
 anim_offset = 0.15
 anim_speed = 1.7
+voice = true

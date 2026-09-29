@@ -73,8 +73,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 	if event is InputEventMouseMotion and captured:
 		var motion := event as InputEventMouseMotion
-		_yaw = wrapf(_yaw - motion.relative.x * mouse_sensitivity, -PI, PI)
-		_pitch = clampf(_pitch - motion.relative.y * mouse_sensitivity,
+		var sensitivity := mouse_sensitivity * Settings.mouse_sensitivity
+		_yaw = wrapf(_yaw - motion.relative.x * sensitivity, -PI, PI)
+		_pitch = clampf(_pitch - motion.relative.y * sensitivity,
 				deg_to_rad(min_pitch_deg), deg_to_rad(max_pitch_deg))
 	elif event is InputEventMouseButton and event.is_pressed():
 		var button := event as InputEventMouseButton
@@ -84,9 +85,6 @@ func _unhandled_input(event: InputEvent) -> void:
 			_target_distance = minf(max_distance, _target_distance + zoom_step)
 		elif not captured and not _alt_freed and not Game.test_mode:
 			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	elif event.is_action_pressed("toggle_mouse"):
-		_alt_freed = false
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if captured else Input.MOUSE_MODE_CAPTURED
 	elif event.is_action_pressed("show_cursor"):
 		# Dragon Nest style: hold Alt to use the cursor, release to fight again.
 		if captured:

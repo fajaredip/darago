@@ -31,9 +31,13 @@ Tanpa file .bat: buka `game/project.godot` dengan Godot 4.7.2.
 | Klik kanan | tebasan naik (melempar musuh ke udara) |
 | Spasi | lompat; di udara klik kiri = combo udara, klik kanan = hantaman terjun |
 | Tekan arah 2x cepat (atau Shift) | dodge |
-| 1 / 2 | skill Tebasan Terjang / Putaran Badai |
-| Tahan Alt / Esc | kursor mouse |
+| 1 / 2 (atau Q / E) | skill Tebasan Terjang / Putaran Badai |
+| Tahan Alt | kursor mouse |
 | `\` | screenshot (tersalin ke clipboard + disimpan di `screenshots/`) |
+| Esc | menu pengaturan (game di-pause): ganti tombol, sensitivitas mouse, volume, keluar |
+
+Semua tombol di atas (kecuali Esc) bisa diganti lewat **Esc > Control Setting**.
+Pengaturan tersimpan otomatis di `%APPDATA%\Godot\app_userdata\Darago\settings.cfg`.
 
 ## Struktur
 
