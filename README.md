@@ -7,7 +7,7 @@ dengan tanda serangan yang bisa dihindari. Dibuat dengan Godot 4.7.2 (GDScript).
 ![Warrior berlari di dungeon](docs/run.png)
 ![Combo dengan jejak pedang](docs/combat.png)
 
-Semua aset pihak ketiga berlisensi bebas (CC0 / MIT); daftar lengkapnya di
+Semua aset pihak ketiga berlisensi bebas (CC0 / CC BY / OFL / MIT); daftar lengkapnya di
 [game/CREDITS.md](game/CREDITS.md). Tidak ada aset, nama, atau desain dari
 Dragon Nest.
 
@@ -33,6 +33,9 @@ Tanpa file .bat: buka `game/project.godot` dengan Godot 4.7.2.
 | Tekan arah 2x cepat (atau Shift) | dodge |
 | 1 / 2 (atau Q / E) | skill Tebasan Terjang / Putaran Badai |
 | Tahan Alt | kursor mouse |
+| F1 | tampilkan / sembunyikan daftar tombol (otomatis mengecil setelah 20 detik) |
+| C | jendela status (level, EXP, STR/AGI/INT/VIT, stat tempur) |
+| I | inventory: pakai / lepas equipment, enhance (+1 sampai +5), jual item (game di-pause) |
 | `\` | screenshot (tersalin ke clipboard + disimpan di `screenshots/`) |
 | Esc | menu pengaturan (game di-pause): ganti tombol, sensitivitas mouse, volume, keluar |
 

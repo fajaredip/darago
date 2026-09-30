@@ -1,6 +1,7 @@
 class_name CameraRig
 extends Node3D
 ## Third-person action camera: mouse orbit, scroll zoom, wall collision,
+## see-through pillars and props (CameraOcclusion),
 ## smooth follow and light screen shake.
 
 ## Titik pandang di atas kepala, supaya musuh di depan tidak tertutup badan.
@@ -17,6 +18,7 @@ extends Node3D
 @export var max_shake := 0.25
 
 var camera: Camera3D
+var occlusion: CameraOcclusion
 var _pitch_node: Node3D
 var _arm: SpringArm3D
 var _target: Node3D
@@ -46,6 +48,9 @@ func _ready() -> void:
 	camera.far = 300.0
 	_arm.add_child(camera)
 	camera.make_current()
+	occlusion = CameraOcclusion.new()
+	add_child(occlusion)
+	occlusion.setup.call_deferred(self, _arm)  # after the level has registered its pieces
 	_target_distance = distance
 	Game.camera_rig = self
 	if not Game.test_mode:

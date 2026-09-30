@@ -45,9 +45,15 @@ func _ready() -> void:
 	rig.follow(player)
 	hud = Hud.new()
 	add_child(hud)
+	var status := StatusWindow.new()
+	status.name = "StatusWindow"
+	add_child(status)
 	var menu := SettingsMenu.new()
 	menu.name = "SettingsMenu"
 	add_child(menu)
+	var bag := InventoryWindow.new()
+	bag.name = "InventoryWindow"
+	add_child(bag)  # after the menu: it sees Esc first and closes itself
 	get_tree().create_timer(1.0).timeout.connect(_next_wave)
 
 
@@ -67,6 +73,16 @@ func _warm_up_enemy_models() -> void:
 			rig.attach(stats.weapon.instantiate(), stats.weapon_bone, Transform3D.IDENTITY)
 		get_tree().create_timer(0.8).timeout.connect(rig.queue_free)
 		x += 3.0
+	# Same for the loot shapes (coin, item box, light beam).
+	for drop: Dictionary in [{}, {"rarity": 3}]:
+		var loot := Loot.new()
+		loot.gold = 0 if drop else 1
+		loot.item = drop
+		Game.world.add_child(loot)
+		loot.global_position = Vector3(x, -3.0, 2.0)
+		loot.set_physics_process(false)  # never collected
+		get_tree().create_timer(0.8).timeout.connect(loot.queue_free)
+		x += 1.5
 
 
 func describe() -> String:
@@ -124,8 +140,13 @@ func _spawn(stats: EnemyStats, pos: Vector3) -> void:
 	Vfx.ring(Vector3(pos.x, 0.05, pos.z), 1.6 * stats.size, Color(0.8, 0.35, 1.0, 0.8), 0.5)
 
 
-func _on_enemy_died(_enemy: Enemy) -> void:
+func _on_enemy_died(enemy: Enemy) -> void:
 	_alive -= 1
+	if not _finished:
+		Progress.add_exp(enemy.stats.exp_reward)
+		Vfx.float_text(enemy.global_position + Vector3.UP * (enemy.bar_height + 0.6),
+				"+%d EXP" % enemy.stats.exp_reward, Color(0.8, 0.7, 1.0), 0.8)
+		Loot.drop_for(enemy.stats, enemy.global_position)
 	if _alive <= 0 and not _finished:
 		Game.slow_motion(0.25, 0.6)
 		get_tree().create_timer(2.0).timeout.connect(_next_wave)

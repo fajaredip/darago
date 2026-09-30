@@ -8,6 +8,11 @@
 script = ExtResource("1_enemy")
 display_name = "Tengkorak Raksasa"
 show_name = true
+exp_reward = 80
+gold_min = 25
+gold_max = 40
+drop_chance = 0.6
+drop_weights = Array[float]([35.0, 40.0, 20.0, 5.0])
 max_hp = 420.0
 attack_power = 60.0
 defense = 10.0

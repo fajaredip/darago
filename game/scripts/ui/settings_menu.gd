@@ -149,7 +149,7 @@ func _build() -> void:
 	_root = Control.new()
 	_fill(_root)
 	_root.mouse_filter = Control.MOUSE_FILTER_STOP  # clicks never reach the game
-	_root.theme = _make_theme()
+	_root.theme = make_theme()
 	add_child(_root)
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0, 0, 0.55)
@@ -334,7 +334,8 @@ func _panel(parent: Control, width: float) -> VBoxContainer:
 	return box
 
 
-func _make_theme() -> Theme:
+## Dark buttons with gold borders, shared by the game's windows.
+static func make_theme() -> Theme:
 	var theme := Theme.new()
 	var states := {
 		"normal": [Color(0.15, 0.13, 0.17), Color(0.45, 0.38, 0.26)],
@@ -359,6 +360,7 @@ func _make_theme() -> Theme:
 
 func _title(text: String) -> Label:
 	var l := _label(text, 28, GOLD)
+	l.add_theme_font_override("font", Hud.TITLE_FONT)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return l
 

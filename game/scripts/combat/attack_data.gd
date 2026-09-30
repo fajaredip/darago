@@ -4,6 +4,8 @@ extends Resource
 ## Ubah angka di Inspector untuk menyetel rasa serangan.
 
 @export var display_name := "Serangan"
+## Ikon di bar skill (kosong = ikon bawaan slot).
+@export var icon: Texture2D
 
 @export_group("Waktu")
 ## Ancang-ancang sebelum pukulan kena.

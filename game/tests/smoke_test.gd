@@ -20,6 +20,9 @@ func _run() -> void:
 	await _frames(5)
 	var p := Game.player
 	_check(p != null, "player spawned")
+	_check(Progress.level == 1 and is_equal_approx(p.stats.max_hp, 500.0) and is_equal_approx(p.stats.max_mana, 100.0)
+			and is_equal_approx(p.stats.attack_power, 22.0) and is_equal_approx(p.stats.defense, 5.0) and absf(p.stats.crit_chance - 0.15) < 0.005,
+			"Lv 1 Warrior stats from STR/AGI/INT/VIT: HP 500, MP 100, ATK 22, DEF 5, crit 15%")
 	if p == null:
 		_finish()
 		return
@@ -102,6 +105,9 @@ func _run() -> void:
 	_check(p.state == Player.State.ATTACK and p._is_skill, "dash skill starts")
 	_check(p.mana <= mana_before - 19.0, "dash skill costs mana")
 	_check(p.skill_cooldowns[0] > 4.0, "dash skill goes on cooldown")
+	var hud_ui: Hud = get_tree().get_first_node_in_group("hud")
+	_check(hud_ui._slots[0]._cd_label.text != "", "skill bar shows the dash cooldown")
+	_check(hud_ui._objective.text.contains("Musuh  3 / 3"), "top-right shows the enemy count (%s)" % hud_ui._objective.text.replace("\n", " | "))
 	await _frames(30)
 	_check(front.hp < front_hp, "dash skill damages the enemy on its path")
 	await _frames(20)
@@ -191,6 +197,8 @@ func _run() -> void:
 	await _shot("04_telegraph")
 	await _frames(45)
 	_check(p.hp < player_hp, "enemy attack damages the player")
+	var hp_ui: Hud = get_tree().get_first_node_in_group("hud")
+	_check(hp_ui._hp_bar._ghost > hp_ui._hp_bar.fraction(), "HP bar keeps a ghost of the damage taken")
 
 	# Clearing the wave starts the next one.
 	for e in _enemies():
@@ -199,6 +207,7 @@ func _run() -> void:
 	await _frames(240)
 	var wave2 := _enemies()
 	_check(wave2.size() == 5, "wave 2 spawned 5 enemies (got %d)" % wave2.size())
+	_check(Progress.level == 1 and Progress.experience == 60, "defeating wave 1 gives 3 x 20 EXP (got %d)" % Progress.experience)
 	await _frames(40)
 	await _shot("05_wave2")
 
@@ -215,6 +224,11 @@ func _run() -> void:
 		ogre.global_position = p.global_position + p.facing * 2.0
 		ogre._face_instant(p.global_position - ogre.global_position)
 		await _frames(30)
+		ogre.hp = ogre.stats.max_hp * 0.6
+		for e in wave2:
+			e.hp = minf(e.hp, e.stats.max_hp * 0.8)
+		await _frames(2)
+		await _shot("05b_enemy_names")
 		p._iframes = 0.0
 		var hp_before := p.hp
 		p.request_action(&"jump")
@@ -238,6 +252,122 @@ func _run() -> void:
 		_check(png != "" and FileAccess.file_exists(png), "screenshot key saves a PNG")
 		var note := FileAccess.get_file_as_string(png.get_basename() + ".txt")
 		_check(note.contains("Pemain Warrior") and note.contains("Level:"), "screenshot saves a context note")
+
+	# Level up: stats grow, HP and MP refill, the status window shows it, the save keeps it.
+	var hp_max_before := p.stats.max_hp
+	var atk_before := p.stats.attack_power
+	p.hp = p.stats.max_hp * 0.5
+	Progress.add_exp(Progress.exp_to_next(Progress.level) - Progress.experience)
+	await _frames(10)
+	_check(Progress.level == 2 and p.stats.max_hp > hp_max_before and p.stats.attack_power > atk_before,
+			"level up raises the Warrior's stats (Lv %d, HP %d, ATK %d)" % [Progress.level, p.stats.max_hp, p.stats.attack_power])
+	_check(is_equal_approx(p.hp, p.stats.max_hp), "level up refills HP")
+	await _shot("10a_level_up")
+	var status: StatusWindow = get_tree().current_scene.get_node("StatusWindow")
+	var key_c := InputEventKey.new()
+	key_c.physical_keycode = KEY_C
+	key_c.pressed = true
+	Input.parse_input_event(key_c)
+	await _frames(3)
+	_check(status.is_open() and status._level.text.contains("Lv 2"), "C opens the status window (%s)" % status._level.text)
+	await _shot("10d_status")
+	status.toggle()
+	Progress.use_file("user://save_smoke_test.cfg")
+	Progress.save_file()
+	var saved_level := Progress.level
+	var saved_exp := Progress.experience
+	Progress.level = 1
+	Progress.experience = 0
+	Progress.load_file()
+	_check(Progress.level == saved_level and Progress.experience == saved_exp, "level and EXP are saved and loaded back")
+
+	# Items: gold and items on the floor are collected; equip, enhance, sell, save.
+	var gold_before := Progress.gold
+	var item_rng := RandomNumberGenerator.new()
+	item_rng.seed = 7
+	var sword := ItemDB.generate("weapon", 3, 2, item_rng)
+	var drops: Array[Loot] = [Loot.spawn(p.global_position, 12, {}), Loot.spawn(p.global_position, 0, sword)]
+	await _frames(30)
+	for drop in drops:  # walk up to each drop (the player may still be sliding)
+		if is_instance_valid(drop):
+			p.velocity = Vector3.ZERO
+			p.global_position = Vector3(drop.global_position.x, p.global_position.y, drop.global_position.z)
+			await _frames(40)
+	_check(Progress.gold >= gold_before + 12, "gold on the floor flies to the player and is collected")
+	_check(sword.has("id") and not Inventory.find(int(sword.get("id", -1))).is_empty(), "an item on the floor goes into the inventory")
+	var bag: InventoryWindow = get_tree().current_scene.get_node("InventoryWindow")
+	var key_i := InputEventKey.new()
+	key_i.physical_keycode = KEY_I
+	key_i.pressed = true
+	Input.parse_input_event(key_i)
+	await _frames(3)
+	_check(bag.is_open() and get_tree().paused, "I opens the inventory and pauses the game")
+	var sword_id := int(sword.get("id", -1))
+	bag.select(sword_id)
+	await _shot("10e_inventory")
+	var atk_plain := p.stats.attack_power
+	bag.equip_selected()
+	_check(Inventory.is_equipped(sword_id) and p.stats.attack_power > atk_plain,
+			"equipping a sword raises ATK (%d -> %d)" % [atk_plain, p.stats.attack_power])
+	Progress.gold = 1000
+	var atk_equipped := p.stats.attack_power
+	var result := bag.enhance_selected(0.0)
+	_check(result == "ok" and int(Inventory.find(sword_id)["enhance"]) == 1 and p.stats.attack_power > atk_equipped,
+			"enhance +1 succeeds and raises ATK (%d -> %d)" % [atk_equipped, p.stats.attack_power])
+	var gold_mid := Progress.gold
+	result = bag.enhance_selected(0.999)
+	_check(result == "fail" and int(Inventory.find(sword_id)["enhance"]) == 1 and Progress.gold < gold_mid,
+			"a failed enhance costs gold but the item stays +1")
+	await _shot("10f_inventory_enhanced")
+	Inventory.add(ItemDB.generate("armor", 2, 0, item_rng))
+	var junk_id := int(Inventory.items.back()["id"])
+	bag.select(junk_id)
+	var gold_sell := Progress.gold
+	bag.sell_selected()
+	_check(Inventory.find(junk_id).is_empty() and Progress.gold > gold_sell, "selling an item gives gold")
+	Progress.save_file()
+	Inventory.items = []
+	Inventory.equipped = {}
+	Progress.load_file()
+	_check(Inventory.is_equipped(sword_id) and int(Inventory.find(sword_id)["enhance"]) == 1,
+			"equipment and enhancement are saved and loaded back")
+	bag.close()
+	await _frames(2)
+	_check(not bag.is_open() and not get_tree().paused, "closing the inventory resumes the game")
+
+	# A pillar between camera and player turns see-through; the camera does not snap in.
+	var rig := Game.camera_rig
+	var pillar_pos := Vector3(cos(TAU / 6.0), 0.0, sin(TAU / 6.0)) * Arena.PILLAR_RING
+	var pillar: Node3D = null
+	for v: Node3D in get_tree().get_nodes_in_group(CameraOcclusion.GROUP):
+		if v.global_position.distance_to(pillar_pos) < 0.5:
+			pillar = v
+	_check(pillar != null, "pillars are registered as see-through pieces")
+	for e in _enemies():
+		e.set_physics_process(false)
+		e.global_position = Vector3(-15.0, 0.0, -15.0)
+	p.global_position = pillar_pos - Vector3(0.0, 0.0, 3.0)
+	p.velocity = Vector3.ZERO
+	rig._yaw = 0.0  # camera behind the player on +Z, looking through the pillar
+	rig._pitch = -0.3
+	rig._target_distance = 6.5
+	rig.follow(p)
+	await _frames(60)
+	if pillar:
+		_check(rig.occlusion.drawn_alpha(pillar) < 0.5, "a pillar blocking the view is drawn see-through (alpha %.2f)" % rig.occlusion.drawn_alpha(pillar))
+	_check(rig._arm.get_hit_length() > 5.5, "the camera looks through the pillar instead of snapping in (%.1f m)" % rig._arm.get_hit_length())
+	await _shot("10c_pillar_fade")
+	rig._yaw = PI
+	await _frames(60)
+	if pillar:
+		_check(rig.occlusion.drawn_alpha(pillar) >= 1.0, "the pillar turns solid again when it is out of the way")
+
+	# Low HP: the screen edges glow red.
+	var hp_keep := p.hp
+	p.hp = p.stats.max_hp * 0.15
+	await _frames(20)
+	await _shot("10b_low_hp")
+	p.hp = hp_keep
 
 	# Esc menu and settings (saved to a scratch file, never the player's own).
 	Settings.use_file("user://settings_smoke_test.cfg")
@@ -283,6 +413,13 @@ func _run() -> void:
 	menu.close()
 	await _frames(2)
 	_check(not menu.is_open() and not get_tree().paused, "closing the menu resumes the game")
+	var help_before := hud._help_open
+	var f1 := InputEventKey.new()
+	f1.physical_keycode = KEY_F1
+	f1.pressed = true
+	Input.parse_input_event(f1)
+	await _frames(3)
+	_check(hud._help_open != help_before, "F1 toggles the help line")
 	_finish()
 
 

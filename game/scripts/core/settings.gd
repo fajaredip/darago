@@ -11,8 +11,8 @@ const SLOTS := 2
 const ACTIONS := [
 	[&"move_forward", "Maju"], [&"move_back", "Mundur"], [&"move_left", "Kiri"], [&"move_right", "Kanan"],
 	[&"attack", "Serang"], [&"heavy", "Serangan berat"], [&"jump", "Lompat"], [&"dodge", "Dodge"],
-	[&"skill_1", "Skill 1"], [&"skill_2", "Skill 2"], [&"show_cursor", "Tampilkan kursor (tahan)"],
-	[&"screenshot", "Screenshot"], [&"restart", "Main lagi (setelah selesai)"],
+	[&"skill_1", "Skill 1"], [&"skill_2", "Skill 2"], [&"status", "Jendela status"], [&"inventory", "Inventory"], [&"show_cursor", "Tampilkan kursor (tahan)"],
+	[&"screenshot", "Screenshot"], [&"help", "Tampilkan bantuan"], [&"restart", "Main lagi (setelah selesai)"],
 ]
 const BUSES := [&"Master", &"Music", &"SFX"]
 const MOUSE_NAMES := {1: "Klik Kiri", 2: "Klik Kanan", 3: "Klik Tengah", 8: "Mouse Samping 1", 9: "Mouse Samping 2"}
@@ -57,8 +57,11 @@ static func default_bindings() -> Dictionary:
 		&"dodge": [_key(KEY_SHIFT), ""],
 		&"skill_1": [_key(KEY_1), _key(KEY_Q)],
 		&"skill_2": [_key(KEY_2), _key(KEY_E)],
+		&"status": [_key(KEY_C), ""],
+		&"inventory": [_key(KEY_I), ""],
 		&"show_cursor": [_key(KEY_ALT), ""],
 		&"screenshot": [_key(KEY_BACKSLASH), ""],
+		&"help": [_key(KEY_F1), ""],
 		&"restart": [_key(KEY_R), ""],
 	}
 
@@ -142,7 +145,9 @@ func load_file() -> void:
 	if cfg.load(_path) != OK:
 		return
 	for action in bindings:
-		var saved: Variant = cfg.get_value("input", String(action), null)
+		if not cfg.has_section_key("input", String(action)):
+			continue  # action added after this file was saved: keep its default key
+		var saved: Variant = cfg.get_value("input", String(action))
 		if saved is Array and saved.size() == SLOTS:
 			bindings[action] = [String(saved[0]), String(saved[1])]
 	mouse_sensitivity = clampf(float(cfg.get_value("mouse", "sensitivity", 1.0)), 0.2, 3.0)

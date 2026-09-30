@@ -5,6 +5,19 @@ extends Resource
 
 @export var class_display_name := "Warrior"
 
+@export_group("Stat Utama")
+## Nilai di Lv 1. HP, MP, ATK, DEF dan crit di grup "Status" dihitung dari
+## stat ini (plus level) saat game jalan; lihat scripts/core/progress.gd.
+@export var base_str := 20.0
+@export var base_agi := 10.0
+@export var base_int := 8.0
+@export var base_vit := 16.0
+## Tambahan tiap naik level.
+@export var growth_str := 3.0
+@export var growth_agi := 1.0
+@export var growth_int := 1.0
+@export var growth_vit := 2.5
+
 @export_group("Status")
 @export var max_hp := 500.0
 @export var max_mana := 100.0

@@ -7,6 +7,7 @@ static var _arc_cache := {}
 static var _sphere: SphereMesh
 static var _streak: BoxMesh
 static var _keepalive: Array[Material] = []
+static var _number_font: Font
 
 
 ## Call once at level start, before any fighting.
@@ -21,8 +22,10 @@ static func warm_up(at: Vector3, attacks: Array[AttackData], enemies: Array[Enem
 			unshaded(faint, false, false), overlay_material(), solid(Color.WHITE), glow(Color.WHITE)]
 	for m in _keepalive:
 		m.get_rid()
+	for size in [0.7, 0.8]:  # EXP, gold and item names
+		float_text(at, "+0123456789 EXP Gold abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ", faint, size)
 	for size in [1.0, 1.35]:
-		float_text(at, "0123456789!DODGE", faint, size)
+		float_text(at, "0123456789!DODGE +EXP", faint, size)
 	for a in attacks:
 		if a and a.impact_ring:
 			ring(at, a.impact_radius if a.impact_radius > 0.0 else a.radius, faint)
@@ -38,6 +41,7 @@ static func clear_cache() -> void:
 	_sphere = null
 	_streak = null
 	_keepalive.clear()
+	_number_font = null
 
 
 static func solid(color: Color) -> StandardMaterial3D:
@@ -180,6 +184,9 @@ static func float_text(pos: Vector3, text: String, color: Color, size := 1.0) ->
 		return
 	var l := Label3D.new()
 	l.text = text
+	if _number_font == null:
+		_number_font = load("res://assets/fonts/number_font.tres")
+	l.font = _number_font
 	l.billboard = BaseMaterial3D.BILLBOARD_ENABLED
 	l.no_depth_test = true
 	l.font_size = int(56 * size)

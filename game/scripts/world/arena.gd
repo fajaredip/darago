@@ -112,7 +112,7 @@ func _build_walls() -> void:
 				_piece(BANNERS[_rng.randi_range(0, BANNERS.size() - 1)], face - inward * 0.3, rad_to_deg(yaw))
 	for sx in [-1.0, 1.0]:
 		for sz in [-1.0, 1.0]:
-			_piece("pillar", Vector3(half * sx, 0.0, half * sz), 0.0)
+			CameraOcclusion.make_fadeable(_piece("pillar", Vector3(half * sx, 0.0, half * sz), 0.0), 0.9, WALL_HEIGHT)
 
 
 func _build_pillar(pos: Vector3) -> void:
@@ -124,7 +124,8 @@ func _build_pillar(pos: Vector3) -> void:
 	col.shape = shape
 	col.position.y = WALL_HEIGHT * 0.5
 	body.add_child(col)
-	_piece("pillar_decorated", pos, rad_to_deg(atan2(pos.x, pos.z)))
+	var visual := _piece("pillar_decorated", pos, rad_to_deg(atan2(pos.x, pos.z)))
+	CameraOcclusion.make_fadeable(visual, 0.9, WALL_HEIGHT, body)
 
 
 ## Clutter along the walls and in the corners; the middle stays open for fights.
@@ -143,7 +144,8 @@ func _build_props() -> void:
 		var node := _piece(p[0], p[1], p[2])
 		node.scale = Vector3.ONE * float(p[3])
 		if p[0] in ["barrel_large", "crates_stacked", "chest_gold", "rubble_large", "table_long_broken", "shelf_large", "box_stacked"]:
-			_collision_box(p[1] + Vector3.UP * 0.8, Vector3(1.8, 1.6, 1.8))
+			var body := _collision_box(p[1] + Vector3.UP * 0.8, Vector3(1.8, 1.6, 1.8))
+			CameraOcclusion.make_fadeable(node, 1.1, 3.2 if p[0] == "shelf_large" else 2.2, body)
 
 
 func _torch(pos: Vector3, yaw: float) -> void:
@@ -190,10 +192,11 @@ func _static_body(pos: Vector3) -> StaticBody3D:
 	return body
 
 
-func _collision_box(center: Vector3, size: Vector3) -> void:
+func _collision_box(center: Vector3, size: Vector3) -> StaticBody3D:
 	var body := _static_body(center)
 	var shape := BoxShape3D.new()
 	shape.size = size
 	var col := CollisionShape3D.new()
 	col.shape = shape
 	body.add_child(col)
+	return body

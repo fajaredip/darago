@@ -18,6 +18,8 @@ config/features=PackedStringArray("4.7", "Mobile")
 [autoload]
 
 Settings="*res://scripts/core/settings.gd"
+Inventory="*res://scripts/core/inventory.gd"
+Progress="*res://scripts/core/progress.gd"
 Game="*res://scripts/core/game.gd"
 Sfx="*res://scripts/core/sfx.gd"
 Screenshot="*res://scripts/core/screenshot.gd"
@@ -27,6 +29,10 @@ Screenshot="*res://scripts/core/screenshot.gd"
 window/size/viewport_width=1600
 window/size/viewport_height=900
 window/vsync/vsync_mode=0
+
+[gui]
+
+theme/custom_font="res://assets/fonts/ui_font.tres"
 
 [layer_names]
 

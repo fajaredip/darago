@@ -5,6 +5,15 @@ extends Resource
 @export var display_name := "Tengkorak"
 ## Tampilkan nama di atas bar HP.
 @export var show_name := false
+## EXP yang didapat pemain saat musuh ini dikalahkan.
+@export var exp_reward := 20
+## Gold yang dijatuhkan (acak di antara min dan max).
+@export var gold_min := 5
+@export var gold_max := 10
+## Peluang menjatuhkan item (0..1).
+@export_range(0.0, 1.0) var drop_chance := 0.15
+## Bobot kelangkaan item: Biasa, Magic, Rare, Epic.
+@export var drop_weights: Array[float] = [60.0, 28.0, 10.0, 2.0]
 @export var max_hp := 90.0
 @export var attack_power := 28.0
 ## Mengurangi damage yang diterima.

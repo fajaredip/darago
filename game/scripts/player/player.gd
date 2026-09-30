@@ -80,6 +80,11 @@ var _trail: WeaponTrail
 
 
 func _ready() -> void:
+	# Own copy of the class: level (and later gear) change its numbers.
+	stats = stats.duplicate()
+	Progress.apply_to(stats)
+	Progress.leveled_up.connect(_on_level_up)
+	Inventory.equipment_changed.connect(_on_gear_changed)
 	hp = stats.max_hp
 	mana = stats.max_mana
 	collision_layer = Game.LAYER_PLAYER
@@ -88,6 +93,28 @@ func _ready() -> void:
 	_build_body()
 	_set_yaw(0.0)
 	Game.player = self
+
+
+## New gear: recompute stats, keeping the same share of HP and MP.
+func _on_gear_changed() -> void:
+	var hp_share := hp / stats.max_hp
+	var mp_share := mana / stats.max_mana
+	Progress.apply_to(stats)
+	if state != State.DEAD:
+		hp = stats.max_hp * hp_share
+		mana = stats.max_mana * mp_share
+
+
+func _on_level_up(_level: int) -> void:
+	Progress.apply_to(stats)
+	if state == State.DEAD:
+		return
+	hp = stats.max_hp
+	mana = stats.max_mana
+	var gold := Color(1.0, 0.82, 0.35)
+	Vfx.ring(global_position + Vector3.UP * 0.05, 3.2, gold, 0.6)
+	Vfx.ring(global_position + Vector3.UP * 1.0, 2.0, Color(1.0, 0.95, 0.7, 0.8), 0.45)
+	Sfx.play("level_up")
 
 
 func can_be_hit() -> bool:
