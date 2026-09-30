@@ -9,12 +9,11 @@ const TEXT := SettingsMenu.TEXT
 const MUTED := SettingsMenu.MUTED
 const SLOT_SIZE := 64.0
 const COLUMNS := 6
-const ICONS := {
-	"weapon": preload("res://assets/ui/icons/broadsword.svg"),
-	"armor": preload("res://assets/ui/icons/breastplate.svg"),
-	"accessory": preload("res://assets/ui/icons/ring.svg"),
-}
 const COIN_ICON := preload("res://assets/ui/icons/two-coins.svg")
+## Kenney Fantasy UI Borders (CC0): ornate frame and divider, tinted gold.
+const FRAME := preload("res://assets/ui/frames/panel_frame.png")
+const DIVIDER := preload("res://assets/ui/frames/divider.png")
+
 const GOOD := Color(0.45, 0.95, 0.45)
 const BAD := Color(1.0, 0.45, 0.4)
 
@@ -22,7 +21,6 @@ var _root: Control
 var _bag_title: Label
 var _bag_buttons: Array[Button] = []
 var _equip_buttons := {}
-var _equip_names := {}
 var _gold: Label
 var _detail_title: Label
 var _detail_info: Label
@@ -96,7 +94,7 @@ func equip_selected() -> void:
 	if item.is_empty():
 		return
 	if Inventory.is_equipped(_selected):
-		if not Inventory.unequip(item["slot"]):
+		if not Inventory.unequip(Inventory.equipped_slot(_selected)):
 			_say("Inventory penuh: tidak bisa melepas", BAD)
 			return
 		_say("Dilepas: %s" % ItemDB.title(item), MUTED)
@@ -155,12 +153,8 @@ func _refresh() -> void:
 	for i in _bag_buttons.size():
 		var item: Dictionary = Inventory.items[i] if i < Inventory.items.size() else {}
 		_style_slot(_bag_buttons[i], item)
-	for slot in ItemDB.SLOTS:
-		var item: Dictionary = Inventory.equipped.get(slot, {})
-		_style_slot(_equip_buttons[slot], item, slot)
-		var name_label: Label = _equip_names[slot]
-		name_label.text = ItemDB.title(item) if not item.is_empty() else "(kosong)"
-		name_label.add_theme_color_override("font_color", ItemDB.color(item) if not item.is_empty() else MUTED)
+	for slot in ItemDB.EQUIP_SLOTS:
+		_style_slot(_equip_buttons[slot], Inventory.equipped.get(slot, {}), slot)
 	_bag_title.text = "Inventory   %d / %d" % [Inventory.items.size(), Inventory.SIZE]
 	_gold.text = "%d" % Progress.gold
 	_show_detail()
@@ -170,22 +164,20 @@ func _style_slot(button: Button, item: Dictionary, empty_slot := "") -> void:
 	var id := int(item.get("id", -1))
 	button.set_meta(&"item_id", id)
 	var has_item := not item.is_empty()
-	var edge := ItemDB.color(item) if has_item else Color(0.35, 0.32, 0.3)
 	var selected := has_item and id == _selected
+	# Dragon Nest style: dark slot, rarity shown by a thick coloured border.
 	for state in ["normal", "hover", "pressed", "focus"]:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0.1, 0.09, 0.12) if state == "normal" else Color(0.18, 0.16, 0.2)
+		var sb := slot_style(item, selected, state == "hover" or state == "pressed")
 		if state == "focus":
 			sb.bg_color = Color(0, 0, 0, 0)
-		sb.border_color = Color.WHITE if selected else edge
-		sb.set_border_width_all(3 if selected else 2)
-		sb.set_corner_radius_all(8)
+			sb.shadow_size = 0
 		button.add_theme_stylebox_override(state, sb)
-	var slot: String = item.get("slot", empty_slot)
-	button.icon = ICONS.get(slot, null)
-	var tint := ItemDB.color(item).lerp(Color.WHITE, 0.25) if has_item else Color(1, 1, 1, 0.12)
-	for c in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color"]:
+	button.icon = ItemDB.icon(item, empty_slot)
+	# Item art keeps its own colours; empty slots show a faint outline.
+	var tint := Color.WHITE if has_item else Color(1, 1, 1, 0.1)
+	for c in ["icon_normal_color", "icon_pressed_color", "icon_focus_color"]:
 		button.add_theme_color_override(c, tint)
+	button.add_theme_color_override("icon_hover_color", Color(1.15, 1.15, 1.15) if has_item else tint)
 	var plus: Label = button.get_meta(&"plus_label")
 	var e := int(item.get("enhance", 0))
 	plus.text = "+%d" % e if e > 0 else ""
@@ -195,9 +187,10 @@ func _show_detail() -> void:
 	var id := _hovered if _hovered >= 0 else _selected
 	var item := Inventory.find(id)
 	var buttons_on := not item.is_empty() and id == _selected
-	_equip_btn.visible = buttons_on
-	_enhance_btn.visible = buttons_on
-	_sell_btn.visible = buttons_on
+	# Hidden by transparency, not `visible`, so the window never changes size.
+	for b: Button in [_equip_btn, _enhance_btn, _sell_btn]:
+		b.modulate.a = 1.0 if buttons_on else 0.0
+		b.mouse_filter = Control.MOUSE_FILTER_STOP if buttons_on else Control.MOUSE_FILTER_IGNORE
 	if item.is_empty():
 		_detail_title.text = "Pilih item"
 		_detail_title.add_theme_color_override("font_color", MUTED)
@@ -210,23 +203,25 @@ func _show_detail() -> void:
 	_detail_info.text = "%s   Lv %d   %s%s" % [ItemDB.SLOT_NAMES[item["slot"]], int(item["ilvl"]),
 			ItemDB.RARITY_NAMES[int(item["rarity"])], "   (dipakai)" if worn else ""]
 	var own := ItemDB.stats(item)
-	var text := "\n".join(ItemDB.stat_lines(own))
+	var current: Dictionary = {} if worn else Inventory.equipped.get(item["slot"], {})
+	var theirs := ItemDB.stats(current)
+	# One line per stat; the change against the worn item sits on the same line.
+	var text := ""
+	for stat in ItemDB.STAT_ORDER:
+		var mine := int(own.get(stat, 0))
+		var diff := mine - int(theirs.get(stat, 0))
+		if mine == 0 and (current.is_empty() or diff == 0):
+			continue
+		var line := "%s +%d" % [stat, mine] if mine != 0 else "[color=#%s]%s -[/color]" % [MUTED.to_html(false), stat]
+		if not current.is_empty() and diff != 0:
+			var c := GOOD if diff > 0 else BAD
+			line += "    [color=#%s](%+d)[/color]" % [c.to_html(false), diff]
+		text += line + "\n"
 	if not worn:
-		var current: Dictionary = Inventory.equipped.get(item["slot"], {})
 		if current.is_empty():
-			text += "\n\n[color=#%s]Slot %s masih kosong[/color]" % [GOOD.to_html(false), ItemDB.SLOT_NAMES[item["slot"]]]
+			text += "\n[color=#%s]Slot %s masih kosong[/color]" % [GOOD.to_html(false), ItemDB.SLOT_NAMES[item["slot"]]]
 		else:
-			text += "\n\n[color=#%s]Dibanding %s:[/color]" % [MUTED.to_html(false), ItemDB.title(current)]
-			var theirs := ItemDB.stats(current)
-			var any := false
-			for stat in ItemDB.STAT_ORDER:
-				var diff := int(own.get(stat, 0)) - int(theirs.get(stat, 0))
-				if diff != 0:
-					any = true
-					var c := GOOD if diff > 0 else BAD
-					text += "\n[color=#%s]%s %+d[/color]" % [c.to_html(false), stat, diff]
-			if not any:
-				text += "\nsama"
+			text += "\n[color=#%s](angka dalam kurung: dibanding %s)[/color]" % [MUTED.to_html(false), ItemDB.title(current)]
 	_detail_stats.text = text
 	_equip_btn.text = "Lepas" if worn else "Pakai"
 	var chance := ItemDB.enhance_chance(item)
@@ -258,12 +253,11 @@ func _build() -> void:
 	var panel := PanelContainer.new()
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.07, 0.06, 0.09, 0.96)
-	style.border_color = GOLD
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(10)
-	style.set_content_margin_all(22)
+	style.set_corner_radius_all(6)  # the gold edge comes from the ornate frame
+	style.set_content_margin_all(30)  # room for the ornate frame
 	panel.add_theme_stylebox_override("panel", style)
 	center.add_child(panel)
+	panel.draw.connect(func() -> void: panel.draw_style_box(frame_style(), Rect2(Vector2.ZERO, panel.size)))
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 28)
 	panel.add_child(columns)
@@ -274,21 +268,25 @@ func _build() -> void:
 	left.add_theme_constant_override("separation", 10)
 	columns.add_child(left)
 	left.add_child(_title("Equipment"))
-	for slot in ItemDB.SLOTS:
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 12)
-		left.add_child(row)
+	# Equipment as a 3 x 3 grid (armor parts, weapon, necklace and two rings).
+	var equip_grid := GridContainer.new()
+	equip_grid.columns = 3
+	equip_grid.add_theme_constant_override("h_separation", 26)
+	equip_grid.add_theme_constant_override("v_separation", 2)
+	left.add_child(equip_grid)
+	for slot in ["helmet", "armor", "gloves", "legs", "boots", "weapon", "necklace", "accessory", "accessory_2"]:
+		var cell := VBoxContainer.new()
+		cell.add_theme_constant_override("separation", 1)
+		equip_grid.add_child(cell)
 		var button := _slot_button()
+		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		button.pressed.connect(func() -> void: _on_slot_pressed(button))
-		row.add_child(button)
+		cell.add_child(button)
 		_equip_buttons[slot] = button
-		var labels := VBoxContainer.new()
-		labels.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_child(labels)
-		labels.add_child(_label(ItemDB.SLOT_NAMES[slot], 13, MUTED))
-		var name_label := _label("", 16, TEXT)
-		labels.add_child(name_label)
-		_equip_names[slot] = name_label
+		var name_label := _label(ItemDB.SLOT_NAMES[slot], 12, MUTED)
+		name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		name_label.custom_minimum_size.x = 96.0
+		cell.add_child(name_label)
 	var gold_row := HBoxContainer.new()
 	gold_row.add_theme_constant_override("separation", 8)
 	left.add_child(gold_row)
@@ -301,16 +299,19 @@ func _build() -> void:
 	gold_row.add_child(coin)
 	_gold = _label("0", 17, Color(1.0, 0.85, 0.4))
 	gold_row.add_child(_gold)
-	left.add_child(HSeparator.new())
+	left.add_child(divider())
 	_detail_title = _label("", 19, TEXT)
+	_detail_title.clip_text = true
+	_detail_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	left.add_child(_detail_title)
 	_detail_info = _label("", 13, MUTED)
+	_detail_info.clip_text = true
 	left.add_child(_detail_info)
 	_detail_stats = RichTextLabel.new()
 	_detail_stats.bbcode_enabled = true
-	_detail_stats.fit_content = true
+	_detail_stats.fit_content = false  # fixed size: hovering never resizes the window
 	_detail_stats.scroll_active = false
-	_detail_stats.custom_minimum_size = Vector2(0.0, 150.0)
+	_detail_stats.custom_minimum_size = Vector2(360.0, 196.0)
 	_detail_stats.add_theme_font_size_override("normal_font_size", 15)
 	_detail_stats.add_theme_color_override("default_color", TEXT)
 	left.add_child(_detail_stats)
@@ -356,22 +357,26 @@ func _build() -> void:
 func _slot_button() -> Button:
 	var b := Button.new()
 	b.custom_minimum_size = Vector2(SLOT_SIZE, SLOT_SIZE)
+	b.pivot_offset = Vector2(SLOT_SIZE, SLOT_SIZE) * 0.5  # hover grows it from the middle
 	b.expand_icon = true
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	b.add_theme_constant_override("icon_max_width", 44)
+	b.add_theme_constant_override("icon_max_width", 50)
 	b.focus_mode = Control.FOCUS_NONE
 	b.set_meta(&"item_id", -1)
 	var plus := _label("", 13, Color(1.0, 0.9, 0.5))
 	plus.add_theme_constant_override("outline_size", 4)
 	plus.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
-	plus.position = Vector2(SLOT_SIZE - 26.0, 2.0)
+	plus.position = Vector2(6.0, 2.0)  # "+N" top-left, like Dragon Nest
 	b.add_child(plus)
 	b.set_meta(&"plus_label", plus)
 	b.mouse_entered.connect(func() -> void:
 		_hovered = int(b.get_meta(&"item_id"))
+		if _hovered >= 0:
+			b.create_tween().tween_property(b, "scale", Vector2.ONE * 1.08, 0.08)
 		_show_detail())
 	b.mouse_exited.connect(func() -> void:
 		_hovered = -1
+		b.create_tween().tween_property(b, "scale", Vector2.ONE, 0.1)
 		_show_detail())
 	b.gui_input.connect(func(event: InputEvent) -> void:
 		var mb := event as InputEventMouseButton
@@ -407,3 +412,43 @@ func _button(text: String) -> Button:
 	b.add_theme_font_size_override("font_size", 15)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return b
+
+
+## Look of one item slot (also used by the status window): dark box, thick
+## border in the rarity colour, a soft glow for Rare / Epic or the picked item.
+static func slot_style(item: Dictionary, selected := false, hover := false) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = Color(0.13, 0.12, 0.16) if hover else Color(0.06, 0.055, 0.08)
+	sb.set_corner_radius_all(10)
+	if item.is_empty():
+		sb.border_color = Color(0.32, 0.29, 0.26)
+		sb.set_border_width_all(2)
+		return sb
+	var c := ItemDB.color(item)
+	sb.border_color = c.lerp(Color.WHITE, 0.45) if selected else c
+	sb.set_border_width_all(4 if selected else 3)
+	if int(item.get("rarity", 0)) >= 2 or selected:
+		sb.shadow_color = Color(c.r, c.g, c.b, 0.5)
+		sb.shadow_size = 6
+	return sb
+
+
+## Ornate gold frame (Kenney Fantasy UI Borders) for a window's edge.
+static func frame_style() -> StyleBoxTexture:
+	var sb := StyleBoxTexture.new()
+	sb.texture = FRAME
+	sb.set_texture_margin_all(30.0)
+	sb.modulate_color = GOLD
+	sb.draw_center = false
+	return sb
+
+
+static func divider() -> TextureRect:
+	var d := TextureRect.new()
+	d.texture = DIVIDER
+	d.modulate = Color(GOLD.r, GOLD.g, GOLD.b, 0.8)
+	d.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	d.stretch_mode = TextureRect.STRETCH_SCALE
+	d.custom_minimum_size = Vector2(0.0, 14.0)
+	d.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return d

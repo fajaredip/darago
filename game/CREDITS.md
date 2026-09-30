@@ -18,6 +18,11 @@ All third-party assets below are free to use in personal and commercial projects
 | Epic Boss Battle (seamless loop), boss music | Juhani Junkala (SubspaceAudio) | CC0 | https://opengameart.org/content/boss-battle-music |
 | Forgotten Tomb Ambience | kindland | CC0 | https://opengameart.org/content/forgoten-tomb-ambience |
 | UI icons (`assets/ui/icons`, black background removed): quick-slash, sword-spin, dodging, broadsword, breastplate by Lorc; ring, two-coins by Delapouite | Lorc and Delapouite, game-icons.net | CC BY 3.0 | https://game-icons.net (https://github.com/game-icons/icons) |
+| Sword item icons (`assets/ui/items/sword_*.png`): renders of the KayKit swords made with `tests/bake_item_icons.gd`; `sword_2handed_color` model from the Adventurers pack | Kay Lousberg (KayKit) | CC0 | https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0 |
+| Armor item icons (`assets/ui/items/armor_*`, `helmet_*`, `gloves_*`, `legs_*`, `boots_*`: leather, chain and plate rows cropped from the sheet, black keyed out) "Armor Icons by Equipment Slot" | Clint Bellanger, Blarumyrran, crowline, Justin Nichol | CC0 | https://opengameart.org/content/armor-icons-by-equipment-slot |
+| Ring item icons (`assets/ui/items/ring_*.png`, resized) "17 rings" | Pavel Kutejnikov | CC0 | https://opengameart.org/node/136218 |
+| Fantasy UI Borders (`assets/ui/frames`: panel frame, divider) | Kenney | CC0 | https://kenney.nl/assets/fantasy-ui-borders |
+| Necklace model (`assets/models/necklace`, rendered into `assets/ui/items/necklace_*.png` in three metal tints) | Paul Wortmann | CC0 | https://opengameart.org/content/necklace |
 | Nunito font (`assets/fonts/Nunito.ttf`, UI text) | The Nunito Project Authors | SIL OFL 1.1 (`assets/fonts/OFL-Nunito.txt`) | https://github.com/googlefonts/nunito |
 | Cinzel font (`assets/fonts/Cinzel.ttf`, titles) | The Cinzel Project Authors | SIL OFL 1.1 (`assets/fonts/OFL-Cinzel.txt`) | https://github.com/NDISCOVER/Cinzel |
 

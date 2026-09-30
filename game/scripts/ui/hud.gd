@@ -8,6 +8,7 @@ const DEFAULT_ICONS: Array[Texture2D] = [
 	preload("res://assets/ui/icons/quick-slash.svg"),
 	preload("res://assets/ui/icons/sword-spin.svg"),
 ]
+const POTION_ICON := preload("res://assets/ui/icons/potion.svg")
 const DODGE_ICON := preload("res://assets/ui/icons/dodging.svg")
 ## Seconds the full help line stays up before it shrinks to a single hint.
 const HELP_SECONDS := 20.0
@@ -16,6 +17,7 @@ const GOLD := Color(1.0, 0.85, 0.45)
 var _hp_bar: ResourceBar
 var _mp_bar: ResourceBar
 var _slots: Array[SkillSlot] = []
+var _dodge_slot: SkillSlot
 var _vignette: DamageVignette
 var _combo: Label
 var _announce: Label
@@ -63,31 +65,47 @@ func _ready() -> void:
 	root.add_child(_bars)
 
 	var bottom := VBoxContainer.new()
-	_anchor(bottom, 0.5, 1.0, 0.5, 1.0, -240.0, -200.0, 240.0, -22.0)
+	_anchor(bottom, 0.5, 1.0, 0.5, 1.0, -280.0, -175.0, 280.0, -20.0)
 	bottom.alignment = BoxContainer.ALIGNMENT_END
-	bottom.add_theme_constant_override("separation", 5)
+	bottom.add_theme_constant_override("separation", 4)
 	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(bottom)
 
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 34)
+	row.add_theme_constant_override("separation", 5)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom.add_child(row)
 	var stats := Game.player.stats
 	var skills: Array[AttackData] = [stats.skill_1, stats.skill_2]
-	for i in skills.size():
-		var icon: Texture2D = skills[i].icon if skills[i].icon else DEFAULT_ICONS[i]
-		_slots.append(_add_slot(row, icon, skills[i].color, skills[i].display_name))
-	_slots.append(_add_slot(row, DODGE_ICON, Color(0.7, 0.82, 0.95), "Dodge"))
+	# Slot 1: Skill 1
+	var icon0: Texture2D = skills[0].icon if skills[0].icon else DEFAULT_ICONS[0]
+	_slots.append(_add_slot(row, icon0, skills[0].color, skills[0].display_name))
+	# Slot 2: Skill 2
+	var icon1: Texture2D = skills[1].icon if skills[1].icon else DEFAULT_ICONS[1]
+	_slots.append(_add_slot(row, icon1, skills[1].color, skills[1].display_name))
+	# Slot 3: Potion HP
+	_slots.append(_add_slot(row, POTION_ICON, Color(0.95, 0.25, 0.3), "HP"))
+	# Slot 4: Potion MP
+	_slots.append(_add_slot(row, POTION_ICON, Color(0.25, 0.6, 1.0), "MP"))
+	# Slots 5 - 10: Empty slots
+	for i in range(5, 11):
+		_slots.append(_add_slot(row, null, Color(0.3, 0.3, 0.35), ""))
+
+	# Separator before Dodge
+	var sep := Control.new()
+	sep.custom_minimum_size = Vector2(8.0, 44.0)
+	row.add_child(sep)
+
+	_dodge_slot = _add_slot(row, DODGE_ICON, Color(0.7, 0.82, 0.95), "Dodge")
 
 	_class_label = _label(18, GOLD, 5)
 	_class_label.add_theme_font_override("font", TITLE_FONT)
 	_class_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	bottom.add_child(_class_label)
-	_hp_bar = ResourceBar.new(Color(0.82, 0.16, 0.2), "HP", 480.0, 24.0)
+	_hp_bar = ResourceBar.new(Color(0.82, 0.16, 0.2), "HP", 550.0, 22.0)
 	bottom.add_child(_hp_bar)
-	_mp_bar = ResourceBar.new(Color(0.22, 0.45, 0.95), "MP", 480.0, 18.0, false)
+	_mp_bar = ResourceBar.new(Color(0.22, 0.45, 0.95), "MP", 550.0, 16.0, false)
 	bottom.add_child(_mp_bar)
 
 	_combo = _title_label(46, Color(1.0, 0.85, 0.35), 10)
@@ -203,18 +221,26 @@ func _refresh_key_hints() -> void:
 			single = single and k.length() == 1
 		var move_text := "".join(move) if single else "/".join(move)
 		_help.text = ("%s: gerak    Mouse: kamera    %s: serang (tahan = combo)    %s: serangan berat    %s: lompat\n"
-				+ "Tekan arah 2x cepat / %s: dodge    %s / %s: skill    Di udara: %s / %s    Tahan %s: kursor    %s: status    %s: inventory    Esc: menu    %s: screenshot    %s: tutup bantuan") % [
+				+ "Tekan arah 2x / %s: dodge    1-2: skill    3: Potion HP    4: Potion MP    %s: status    %s: inventory    Esc: menu    %s: screenshot    %s: bantuan") % [
 				move_text, s.key_name(&"attack"), s.key_name(&"heavy"), s.key_name(&"jump"), s.key_name(&"dodge"),
-				s.key_name(&"skill_1"), s.key_name(&"skill_2"), s.key_name(&"attack"), s.key_name(&"heavy"),
-				s.key_name(&"show_cursor"), s.key_name(&"status"), s.key_name(&"inventory"), s.key_name(&"screenshot"), s.key_name(&"help")]
+				s.key_name(&"status"), s.key_name(&"inventory"), s.key_name(&"screenshot"), s.key_name(&"help")]
 		_help.modulate.a = 1.0
 	else:
 		_help.text = "%s: bantuan tombol" % s.key_name(&"help")
 		_help.modulate.a = 0.6
-	if _slots.size() >= 3:
+	if _slots.size() >= 10:
 		_slots[0].set_key(s.key_name(&"skill_1"))
 		_slots[1].set_key(s.key_name(&"skill_2"))
-		_slots[2].set_key(s.key_name(&"dodge"))
+		_slots[2].set_key(s.key_name(&"potion_hp"))
+		_slots[3].set_key(s.key_name(&"potion_mp"))
+		_slots[4].set_key(s.key_name(&"quickslot_5"))
+		_slots[5].set_key(s.key_name(&"quickslot_6"))
+		_slots[6].set_key(s.key_name(&"quickslot_7"))
+		_slots[7].set_key(s.key_name(&"quickslot_8"))
+		_slots[8].set_key(s.key_name(&"quickslot_9"))
+		_slots[9].set_key(s.key_name(&"quickslot_0"))
+	if _dodge_slot:
+		_dodge_slot.set_key(s.key_name(&"dodge"))
 
 
 func _refresh_level() -> void:
@@ -283,7 +309,13 @@ func _process(delta: float) -> void:
 	for i in skills.size():
 		_slots[i].set_state(p.skill_cooldowns[i], skills[i].cooldown,
 				p.mana >= skills[i].mana_cost, p.skill_denied_time[i] > 0.0)
-	_slots[2].set_state(p.dodge_cooldown, p.stats.dodge_cooldown, true, false)
+	if _slots.size() >= 4:
+		_slots[2].set_state(p.hp_potion_cd, Player.POTION_MAX_CD, p.hp_potions > 0 and p.hp < p.stats.max_hp, false)
+		_slots[2].set_count(p.hp_potions)
+		_slots[3].set_state(p.mp_potion_cd, Player.POTION_MAX_CD, p.mp_potions > 0 and p.mana < p.stats.max_mana, false)
+		_slots[3].set_count(p.mp_potions)
+	if _dodge_slot:
+		_dodge_slot.set_state(p.dodge_cooldown, p.stats.dodge_cooldown, true, false)
 	_update_combo(p.combo_hits)
 	_update_objective()
 	_update_enemy_ghosts(delta)

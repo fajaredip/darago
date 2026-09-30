@@ -37,6 +37,11 @@ var skill_cooldowns: Array[float] = [0.0, 0.0]
 ## Short timer the HUD uses to flash a skill that could not be used.
 var skill_denied_time: Array[float] = [0.0, 0.0]
 var dodge_cooldown := 0.0
+const POTION_MAX_CD := 8.0
+var hp_potions := 5
+var mp_potions := 5
+var hp_potion_cd := 0.0
+var mp_potion_cd := 0.0
 
 var _yaw := 0.0
 var _state_time := 0.0
@@ -232,6 +237,10 @@ func _read_input() -> void:
 		request_action(&"skill_1")
 	if Input.is_action_just_pressed("skill_2"):
 		request_action(&"skill_2")
+	if Input.is_action_just_pressed("potion_hp"):
+		use_hp_potion()
+	if Input.is_action_just_pressed("potion_mp"):
+		use_mp_potion()
 	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		if Input.is_action_just_pressed("heavy"):
 			request_action(&"heavy")
@@ -544,6 +553,8 @@ func _spawn_swing_fx(a: AttackData) -> void:
 func _tick_timers(delta: float) -> void:
 	_iframes = maxf(0.0, _iframes - delta)
 	dodge_cooldown = maxf(0.0, dodge_cooldown - delta)
+	hp_potion_cd = maxf(0.0, hp_potion_cd - delta)
+	mp_potion_cd = maxf(0.0, mp_potion_cd - delta)
 	for i in skill_cooldowns.size():
 		skill_cooldowns[i] = maxf(0.0, skill_cooldowns[i] - delta)
 		skill_denied_time[i] = maxf(0.0, skill_denied_time[i] - delta)
@@ -558,6 +569,60 @@ func _tick_timers(delta: float) -> void:
 		combo_hits = 0
 	if state != State.DEAD:
 		mana = minf(stats.max_mana, mana + stats.mana_regen * delta)
+
+
+func use_hp_potion() -> void:
+	if state == State.DEAD:
+		return
+	if hp_potions <= 0:
+		var hud_ui: Hud = get_tree().get_first_node_in_group("hud")
+		if hud_ui:
+			hud_ui.toast("Potion HP habis!")
+		Sfx.play("deny")
+		return
+	if hp_potion_cd > 0.0:
+		Sfx.play("deny")
+		return
+	if hp >= stats.max_hp:
+		var hud_ui: Hud = get_tree().get_first_node_in_group("hud")
+		if hud_ui:
+			hud_ui.toast("HP sudah penuh!")
+		Sfx.play("deny")
+		return
+	hp_potions -= 1
+	hp_potion_cd = POTION_MAX_CD
+	var heal_amt := stats.max_hp * 0.35
+	hp = minf(hp + heal_amt, stats.max_hp)
+	Sfx.play("level_up")
+	Vfx.ring(global_position + Vector3.UP * 0.1, 2.2, Color(0.3, 1.0, 0.4), 0.5)
+	Vfx.float_text(global_position + Vector3.UP * 2.0, "+%d HP" % roundi(heal_amt), Color(0.35, 1.0, 0.45), 0.8)
+
+
+func use_mp_potion() -> void:
+	if state == State.DEAD:
+		return
+	if mp_potions <= 0:
+		var hud_ui: Hud = get_tree().get_first_node_in_group("hud")
+		if hud_ui:
+			hud_ui.toast("Potion MP habis!")
+		Sfx.play("deny")
+		return
+	if mp_potion_cd > 0.0:
+		Sfx.play("deny")
+		return
+	if mana >= stats.max_mana:
+		var hud_ui: Hud = get_tree().get_first_node_in_group("hud")
+		if hud_ui:
+			hud_ui.toast("MP sudah penuh!")
+		Sfx.play("deny")
+		return
+	mp_potions -= 1
+	mp_potion_cd = POTION_MAX_CD
+	var mana_amt := stats.max_mana * 0.50
+	mana = minf(mana + mana_amt, stats.max_mana)
+	Sfx.play("level_up")
+	Vfx.ring(global_position + Vector3.UP * 0.1, 2.2, Color(0.3, 0.65, 1.0), 0.5)
+	Vfx.float_text(global_position + Vector3.UP * 2.0, "+%d MP" % roundi(mana_amt), Color(0.4, 0.7, 1.0), 0.8)
 
 
 # --- Movement helpers ----------------------------------------------------

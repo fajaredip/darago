@@ -53,18 +53,29 @@ func is_equipped(id: int) -> bool:
 
 
 ## Moves a bag item to its equipment slot; the item it replaces goes back to the bag.
+## A ring goes to the free ring slot, or replaces the first ring when both are worn.
 func equip(id: int) -> bool:
 	var index := _bag_index(id)
 	if index < 0:
 		return false
 	var item: Dictionary = items[index]
 	var slot: String = item["slot"]
+	if slot == "accessory" and equipped.has("accessory") and not equipped.has("accessory_2"):
+		slot = "accessory_2"
 	items.remove_at(index)
 	if equipped.has(slot):
 		items.insert(index, equipped[slot])
 	equipped[slot] = item
 	_changed(true)
 	return true
+
+
+## Equipment slot an equipped item sits in ("" if it is in the bag).
+func equipped_slot(id: int) -> String:
+	for slot in equipped:
+		if int(equipped[slot]["id"]) == id:
+			return slot
+	return ""
 
 
 func unequip(slot: String) -> bool:
@@ -139,7 +150,7 @@ func deserialize(data: Dictionary) -> void:
 	equipped = {}
 	var eq: Dictionary = data.get("equipped", {})
 	for slot in eq:
-		if slot in ItemDB.SLOTS and eq[slot] is Dictionary:
+		if slot in ItemDB.EQUIP_SLOTS and eq[slot] is Dictionary:
 			equipped[slot] = eq[slot]
 	_next_id = maxi(int(data.get("next_id", 1)), 1)
 	for item in items + equipped.values():

@@ -1,10 +1,11 @@
 class_name SkillSlot
 extends Control
 ## One HUD skill button: icon, key, clockwise cooldown sweep, a flash when the
-## skill is ready again, and tints for "not enough MP" / "can't use now".
+## skill is ready again, stack count, and tints for "not enough MP" / "can't use now".
 
-const SIZE := 72.0
+const DEFAULT_SIZE := 44.0
 
+var slot_size := DEFAULT_SIZE
 var _icon: Texture2D
 var _color: Color
 var _remaining := 0.0
@@ -15,35 +16,56 @@ var _flash := 0.0
 var _box := StyleBoxFlat.new()
 var _key_label: Label
 var _cd_label: Label
+var _count_label: Label
+var _name_label: Label
 
 
-func _init(icon: Texture2D, color: Color, title: String) -> void:
+func _init(icon: Texture2D, color: Color, title: String, size_px: float = DEFAULT_SIZE) -> void:
+	slot_size = size_px
 	_icon = icon
 	_color = color
-	custom_minimum_size = Vector2(SIZE, SIZE + 18.0)
+	custom_minimum_size = Vector2(slot_size, slot_size + (14.0 if title != "" else 0.0))
 	mouse_filter = MOUSE_FILTER_IGNORE
-	_box.set_corner_radius_all(10)
+	_box.set_corner_radius_all(6)
 	_box.set_border_width_all(2)
 	_box.anti_aliasing = true
 
-	_key_label = _label(15, color.lightened(0.45), 4)
-	_key_label.position = Vector2(6.0, 1.0)
+	_key_label = _label(11, color.lightened(0.45) if _icon else Color(0.7, 0.7, 0.7), 3)
+	_key_label.position = Vector2(4.0, 1.0)
 	add_child(_key_label)
-	_cd_label = _label(24, Color.WHITE, 6)
+
+	_cd_label = _label(16, Color.WHITE, 5)
 	_cd_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_cd_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_cd_label.size = Vector2(SIZE, SIZE)
+	_cd_label.size = Vector2(slot_size, slot_size)
 	add_child(_cd_label)
-	var name_label := _label(12, Color(1.0, 1.0, 1.0, 0.85), 4)
-	name_label.text = title
-	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	name_label.position = Vector2(-14.0, SIZE + 1.0)
-	name_label.size = Vector2(SIZE + 28.0, 17.0)
-	add_child(name_label)
+
+	_count_label = _label(11, Color(1.0, 0.95, 0.6), 3)
+	_count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_count_label.position = Vector2(0.0, slot_size - 14.0)
+	_count_label.size = Vector2(slot_size - 4.0, 13.0)
+	_count_label.visible = false
+	add_child(_count_label)
+
+	if title != "":
+		_name_label = _label(10, Color(1.0, 1.0, 1.0, 0.85), 3)
+		_name_label.text = title
+		_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_name_label.position = Vector2(-10.0, slot_size + 1.0)
+		_name_label.size = Vector2(slot_size + 20.0, 13.0)
+		add_child(_name_label)
 
 
 func set_key(text: String) -> void:
 	_key_label.text = text
+
+
+func set_count(count: int) -> void:
+	if count >= 0:
+		_count_label.text = "%d" % count
+		_count_label.visible = true
+	else:
+		_count_label.visible = false
 
 
 func set_state(remaining: float, total: float, usable: bool, denied: bool) -> void:
@@ -66,7 +88,13 @@ func _process(delta: float) -> void:
 
 
 func _draw() -> void:
-	var rect := Rect2(Vector2.ZERO, Vector2(SIZE, SIZE))
+	var rect := Rect2(Vector2.ZERO, Vector2(slot_size, slot_size))
+	if _icon == null:
+		_box.bg_color = Color(0.1, 0.1, 0.12, 0.75)
+		_box.border_color = Color(0.28, 0.28, 0.32, 0.7)
+		draw_style_box(_box, rect)
+		return
+
 	var is_ready := _remaining <= 0.05
 	var edge := _color if is_ready and _usable else _color.darkened(0.45)
 	if _denied:
@@ -79,16 +107,16 @@ func _draw() -> void:
 	if _denied:
 		tint = Color(1.0, 0.45, 0.4)
 	elif not _usable:
-		tint = Color(0.45, 0.5, 0.75)  # not enough MP
+		tint = Color(0.45, 0.5, 0.75)  # not enough MP / depleted
 	elif not is_ready:
 		tint = tint.darkened(0.3)
-	draw_texture_rect(_icon, rect.grow(-11.0), false, tint)
+	draw_texture_rect(_icon, rect.grow(-6.0), false, tint)
 
 	if not is_ready and _total > 0.0:
 		_draw_sweep(rect.grow(-2.0), clampf(_remaining / _total, 0.0, 1.0))
 	if _flash > 0.0:
 		var glow := StyleBoxFlat.new()
-		glow.set_corner_radius_all(10)
+		glow.set_corner_radius_all(6)
 		glow.bg_color = Color(1.0, 1.0, 1.0, 0.35 * _flash)
 		draw_style_box(glow, rect)
 

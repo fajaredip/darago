@@ -198,7 +198,19 @@ func _run() -> void:
 	await _frames(45)
 	_check(p.hp < player_hp, "enemy attack damages the player")
 	var hp_ui: Hud = get_tree().get_first_node_in_group("hud")
+	# A fresh hit of our own: the enemy's hit above may already have drained its ghost.
+	p._iframes = 0.0
+	p.take_hit(40.0, p.global_position + p.facing, 0.0)
+	await _frames(3)
 	_check(hp_ui._hp_bar._ghost > hp_ui._hp_bar.fraction(), "HP bar keeps a ghost of the damage taken")
+
+	var hp_before_pot := p.hp
+	p.use_hp_potion()
+	_check(p.hp > hp_before_pot and p.hp_potions == 4, "HP potion heals the player")
+	_check(p.hp_potion_cd > 0.0, "HP potion has cooldown")
+	p.mana = 20.0
+	p.use_mp_potion()
+	_check(p.mana > 20.0 and p.mp_potions == 4, "MP potion restores mana")
 
 	# Clearing the wave starts the next one.
 	for e in _enemies():
@@ -269,7 +281,7 @@ func _run() -> void:
 	key_c.pressed = true
 	Input.parse_input_event(key_c)
 	await _frames(3)
-	_check(status.is_open() and status._level.text.contains("Lv 2"), "C opens the status window (%s)" % status._level.text)
+	_check(status.is_open() and status._values["Lv."].text == "2", "C opens the character window (Lv %s)" % status._values["Lv."].text)
 	await _shot("10d_status")
 	status.toggle()
 	Progress.use_file("user://save_smoke_test.cfg")
@@ -331,6 +343,19 @@ func _run() -> void:
 	Progress.load_file()
 	_check(Inventory.is_equipped(sword_id) and int(Inventory.find(sword_id)["enhance"]) == 1,
 			"equipment and enhancement are saved and loaded back")
+	# Armor parts and the two ring slots.
+	var def_before := p.stats.defense
+	Inventory.add(ItemDB.generate("helmet", 5, 1, item_rng))
+	Inventory.equip(int(Inventory.items.back()["id"]))
+	_check(Inventory.equipped.has("helmet") and p.stats.defense > def_before, "a helmet goes in its own slot and adds DEF")
+	var rings: Array[int] = []
+	for r in 3:
+		Inventory.add(ItemDB.generate("accessory", 5, 0, item_rng))
+		rings.append(int(Inventory.items.back()["id"]))
+		Inventory.equip(rings[r])
+	_check(Inventory.equipped_slot(rings[1]) == "accessory_2" and Inventory.equipped_slot(rings[2]) == "accessory"
+			and not Inventory.is_equipped(rings[0]), "two rings fill both ring slots; a third replaces the first")
+	_check(ItemDB.icon(Inventory.equipped["helmet"]) != null and ItemDB.icon({}, "accessory_2") != null, "every slot has an icon")
 	bag.close()
 	await _frames(2)
 	_check(not bag.is_open() and not get_tree().paused, "closing the inventory resumes the game")
@@ -420,6 +445,63 @@ func _run() -> void:
 	Input.parse_input_event(f1)
 	await _frames(3)
 	_check(hud._help_open != help_before, "F1 toggles the help line")
+
+	# Multi-room & Boss & Reward Chest test:
+	var main_scene: Main = get_tree().current_scene as Main
+	_check(main_scene != null and main_scene.arena != null, "main scene and arena initialized")
+	_check(main_scene.arena.gate_1.is_open, "clearing room 1 opens gate 1")
+	_check(not main_scene.arena.gate_2.is_open, "gate 2 remains locked before room 2 clear")
+
+	# Clear room 2 enemies:
+	for e in _enemies():
+		e.set_physics_process(true)
+		e.take_hit(1000000.0, false, p.stats.combo[0], p.global_position, p.facing)
+	await _frames(240)
+	_check(main_scene.arena.gate_2.is_open, "clearing room 2 opens gate 2")
+	_check(main_scene._boss != null, "room 3 spawns the boss")
+	_check(main_scene._boss_bar != null, "boss health bar is displayed")
+
+	# Defeat boss in room 3:
+	for e in _enemies():
+		e.set_physics_process(true)
+		e.take_hit(1000000.0, false, p.stats.combo[0], p.global_position, p.facing)
+	await _frames(60)
+
+	var clear_ui: DungeonClearUI = null
+	# The win screen comes 2 s after the last kill, slowed down by the slow-motion.
+	for wait in 40:
+		for child in hud.get_children():
+			if child is DungeonClearUI:
+				clear_ui = child
+		if clear_ui:
+			break
+		await _frames(15)
+	_check(clear_ui != null, "dungeon clear UI is shown with rank")
+	_check(main_scene.arena.portal_node.visible, "exit portal appears after victory")
+
+	# Find reward chests
+	var chests: Array[RewardChest] = []
+	for child in main_scene.get_children():
+		if child is RewardChest:
+			chests.append(child)
+	_check(chests.size() == 4, "4 reward chests spawned in boss room (got %d)" % chests.size())
+	_check(InputMap.has_action(&"interact"), "the interact key (F) exists")
+	if chests.size() == 4:
+		p.velocity = Vector3.ZERO
+		p.global_position = chests[0].global_position + Vector3(0.0, 0.0, 1.8)
+		await _frames(5)
+		var key_f2 := InputEventKey.new()
+		key_f2.physical_keycode = KEY_F
+		key_f2.pressed = true
+		Input.parse_input_event(key_f2)
+		await _frames(3)
+		var key_f2_up := key_f2.duplicate() as InputEventKey
+		key_f2_up.pressed = false
+		Input.parse_input_event(key_f2_up)
+		await _frames(40)
+		_check(chests[0].is_open, "pressing F next to a chest opens it and drops a reward")
+		_check(chests[1].is_locked and chests[2].is_locked and chests[3].is_locked, "other 3 chests become locked")
+
 	_finish()
 
 
