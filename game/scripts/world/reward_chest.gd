@@ -83,7 +83,7 @@ func open() -> void:
 
 	# Guaranteed Rare (2) or Epic (3) item drop!
 	var rarity := 3 if _rng.randf() < 0.45 else 2
-	var drop_item := ItemDB.roll(Progress.level, [0, 0, 55, 45], _rng)
+	var drop_item := ItemDB.roll(Progress.dungeon_level(), [0, 0, 55, 45], _rng)
 	drop_item["rarity"] = rarity
 	var gold_amt := _rng.randi_range(40, 75)
 

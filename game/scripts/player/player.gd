@@ -105,6 +105,7 @@ func _on_gear_changed() -> void:
 	var hp_share := hp / stats.max_hp
 	var mp_share := mana / stats.max_mana
 	Progress.apply_to(stats)
+	_set_weapon_model(ItemDB.weapon_model(Inventory.equipped.get("weapon", {})))
 	if state != State.DEAD:
 		hp = stats.max_hp * hp_share
 		mana = stats.max_mana * mp_share
@@ -762,13 +763,43 @@ func _build_body() -> void:
 	_trail = WeaponTrail.new()
 	add_child(_trail)
 	_arm_hold = _rig.add_pose_layer(stats.hold_pose_bones, stats.hold_pose_anim, stats.hold_pose_time)
-	if stats.weapon:
-		_weapon = stats.weapon.instantiate()
-		var rot := stats.weapon_rotation * (PI / 180.0)
-		var basis := Basis.from_euler(rot).scaled(Vector3.ONE * stats.weapon_scale)
-		_rig.attach(_weapon, stats.weapon_bone, Transform3D(basis, stats.weapon_position))
-		for mi: MeshInstance3D in _weapon.find_children("*", "MeshInstance3D", true, false):
-			mi.material_overlay = _overlay
-		_trail.setup(_weapon, stats.weapon_trail_base, stats.weapon_trail_tip)
+	_set_weapon_model(ItemDB.weapon_model(Inventory.equipped.get("weapon", {})))
 	_rig.play(stats.anim_idle, 0.0)
 
+
+
+## Puts `scene` in the hand (the class's own sword when null), keeping the grip
+## from the class data. The slash trail is stretched to the new blade's length.
+func _set_weapon_model(scene: PackedScene) -> void:
+	if scene == null:
+		scene = stats.weapon
+	if scene == null or (_weapon and _weapon.scene_file_path == scene.resource_path):
+		return
+	var old := _weapon
+	_weapon = scene.instantiate()
+	var rot := stats.weapon_rotation * (PI / 180.0)
+	var basis := Basis.from_euler(rot).scaled(Vector3.ONE * stats.weapon_scale)
+	_rig.attach(_weapon, stats.weapon_bone, Transform3D(basis, stats.weapon_position))
+	for mi: MeshInstance3D in _weapon.find_children("*", "MeshInstance3D", true, false):
+		mi.material_overlay = _overlay
+	var stretch := 1.0
+	if stats.weapon and scene != stats.weapon:
+		var default_model := stats.weapon.instantiate()
+		stretch = _blade_length(_weapon) / maxf(_blade_length(default_model), 0.01)
+		default_model.free()
+	_trail.setup(_weapon, stats.weapon_trail_base, stats.weapon_trail_tip * stretch)
+	if old:
+		old.get_parent().queue_free()  # the bone attachment holding the old weapon
+
+
+## How far the model reaches along its local +Y (the blade direction).
+func _blade_length(model: Node3D) -> float:
+	var reach := 0.0
+	for mi: MeshInstance3D in model.find_children("*", "MeshInstance3D", true, false):
+		var t := Transform3D.IDENTITY
+		var n: Node = mi
+		while n != model:
+			t = (n as Node3D).transform * t
+			n = n.get_parent()
+		reach = maxf(reach, (t * mi.get_aabb()).end.y)
+	return reach

@@ -23,7 +23,7 @@ static func drop_for(stats: EnemyStats, pos: Vector3) -> void:
 	if amount > 0:
 		spawn(pos, amount, {})
 	if rng.randf() < stats.drop_chance:
-		spawn(pos, 0, ItemDB.roll(Progress.level, stats.drop_weights, rng))
+		spawn(pos, 0, ItemDB.roll(Progress.dungeon_level(), stats.drop_weights, rng))
 
 
 static func spawn(pos: Vector3, gold_amount: int, drop: Dictionary) -> Loot:

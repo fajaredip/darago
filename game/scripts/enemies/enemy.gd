@@ -42,6 +42,7 @@ var _trail: WeaponTrail
 
 func _ready() -> void:
 	_rng.randomize()
+	stats = Progress.scale_enemy(stats)  # grow to the dungeon level of the chosen difficulty
 	hp = stats.max_hp
 	body_radius = 0.45 * stats.size
 	bar_height = 2.0 * stats.size + 0.2

@@ -225,6 +225,7 @@ func _on_player_died() -> void:
 
 func _win() -> void:
 	_finished = true
+	Progress.on_dungeon_cleared()
 	Sfx.stop_music()
 	Sfx.play("wave")
 	if arena and arena.gate_2:

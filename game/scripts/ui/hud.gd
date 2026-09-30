@@ -340,7 +340,7 @@ func _update_objective() -> void:
 		return
 	var alive := get_tree().get_nodes_in_group("enemies").size()
 	_wave_total = maxi(_wave_total, alive)
-	var text := _wave_text
+	var text := "%s  ·  Lv %d\n%s" % [Progress.difficulty_name(), Progress.dungeon_level(), _wave_text]
 	if _wave_total > 0:
 		text += "\nMusuh  %d / %d" % [alive, _wave_total]
 	_objective.text = text

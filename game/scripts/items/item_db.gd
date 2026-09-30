@@ -43,7 +43,7 @@ const TIER_ICONS := {
 	"accessory": ["ring_copper", "ring_silver", "ring_gold"],
 }
 ## Share of the body armor's DEF / HP that each armor part gives.
-const ARMOR_SHARE := {"armor": [1.0, 1.0], "helmet": [0.5, 0.5], "legs": [0.6, 0.6], "gloves": [0.35, 0.0], "boots": [0.35, 0.3]}
+const ARMOR_SHARE := {"armor": [1.0, 1.0], "helmet": [0.35, 0.45], "legs": [0.45, 0.5], "gloves": [0.25, 0.0], "boots": [0.25, 0.3]}
 const PRIMARY := ["STR", "AGI", "INT", "VIT"]
 const STAT_ORDER := ["ATK", "DEF", "HP", "STR", "AGI", "INT", "VIT"]
 const MAX_ENHANCE := 5
@@ -121,6 +121,22 @@ static func icon(item: Dictionary, slot := "") -> Texture2D:
 		return null
 	var tier := maxi(0, (NAMES[kind] as Array).find(item.get("name", "")))
 	return load("res://assets/ui/items/%s.png" % TIER_ICONS[kind][tier])
+
+
+## 3D sword held in the hand for each weapon tier (KayKit models).
+const WEAPON_MODELS := [
+	"res://assets/kaykit/weapons/sword_1handed.gltf",
+	"res://assets/kaykit/weapons/sword_2handed.gltf",
+	"res://assets/kaykit/weapons/sword_2handed_color.gltf",
+]
+
+
+## Model the player holds for a weapon item (null = the class's default sword).
+static func weapon_model(item: Dictionary) -> PackedScene:
+	if item.is_empty():
+		return null
+	var tier := (NAMES["weapon"] as Array).find(item.get("name", ""))
+	return load(WEAPON_MODELS[tier]) if tier >= 0 else null
 
 
 ## Item type an equipment slot takes ("accessory_2" takes rings too).

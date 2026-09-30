@@ -22,6 +22,10 @@ var _sensitivity_value: Label
 var _volume_sliders := {}
 var _volume_values := {}
 var _confirm: Control
+var _confirm_question: Label
+var _confirm_yes: Button
+var _confirm_action := Callable()
+var _difficulty: OptionButton
 
 
 func _ready() -> void:
@@ -135,12 +139,47 @@ func _show_page(page_name: String) -> void:
 	for key in _pages:
 		_pages[key].visible = key == page_name
 	_note.text = ""
+	if page_name == "game":
+		_refresh_difficulty()
 	if page_name == "main":
 		_first_button.grab_focus.call_deferred()
 
 
 func _ask_exit() -> void:
+	_ask("Keluar dari game?", "Ya, keluar", get_tree().quit)
+
+
+## Shows the yes / cancel overlay; `action` runs on "yes".
+func _ask(question: String, yes_text: String, action: Callable) -> void:
+	_confirm_question.text = question
+	_confirm_yes.text = yes_text
+	_confirm_action = action
 	_confirm.visible = true
+
+
+func _restart_dungeon() -> void:
+	close()
+	get_tree().reload_current_scene()
+
+
+func _refresh_difficulty() -> void:
+	_difficulty.clear()
+	for i in Progress.DIFFICULTIES.size():
+		var text := "%s  (Lv %d)" % [Progress.difficulty_name(i), int(Progress.DIFFICULTIES[i][1])]
+		if not Progress.is_unlocked(i):
+			text += "  - terkunci"
+		_difficulty.add_item(text, i)
+		_difficulty.set_item_disabled(i, not Progress.is_unlocked(i))
+	_difficulty.select(Progress.difficulty)
+
+
+func _on_difficulty_picked(index: int) -> void:
+	_difficulty.select(Progress.difficulty)  # only changes once confirmed
+	if index == Progress.difficulty:
+		return
+	_ask("Ganti ke %s? Dungeon dimulai ulang." % Progress.difficulty_name(index), "Ya, ganti", func() -> void:
+		Progress.set_difficulty(index)
+		_restart_dungeon())
 
 
 # --- Building the UI -----------------------------------------------------
@@ -278,6 +317,27 @@ func _build_game(parent: Control) -> Control:
 		_volume_sliders[bus] = slider
 		_volume_values[bus] = value_label
 		page.add_child(row)
+	var diff_row := HBoxContainer.new()
+	diff_row.add_theme_constant_override("separation", 12)
+	var diff_label := _label("Tingkat kesulitan", 18, TEXT)
+	diff_label.custom_minimum_size = Vector2(160, 0)
+	diff_row.add_child(diff_label)
+	_difficulty = OptionButton.new()
+	_difficulty.add_theme_font_size_override("font_size", 16)
+	_difficulty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_difficulty.item_selected.connect(_on_difficulty_picked)
+	diff_row.add_child(_difficulty)
+	page.add_child(diff_row)
+	var diff_note := _label("Lv dungeon = kekuatan musuh, EXP dan level item. Selesaikan dungeon untuk membuka tingkat berikutnya.", 13, MUTED)
+	diff_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	diff_note.custom_minimum_size.x = 420.0
+	page.add_child(diff_note)
+	var wipe := _button("Hapus data save", 16)
+	wipe.pressed.connect(func() -> void:
+		_ask("Hapus semua progres? Level, item, gold dan tingkat kesulitan kembali ke awal.", "Ya, hapus", func() -> void:
+			Progress.reset()
+			_restart_dungeon()))
+	page.add_child(wipe)
 	var back := _button("Kembali", 18)
 	back.pressed.connect(_show_page.bind("main"))
 	page.add_child(back)
@@ -296,14 +356,20 @@ func _build_confirm() -> Control:
 	_fill(dim)
 	overlay.add_child(dim)
 	var box := _panel(overlay, 380.0)
-	var question := _label("Keluar dari game?", 22, TEXT)
+	var question := _label("", 22, TEXT)
+	question.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_confirm_question = question
 	question.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(question)
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 12)
 	var yes := _button("Ya, keluar", 18)
 	yes.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	yes.pressed.connect(get_tree().quit)
+	yes.pressed.connect(func() -> void:
+		overlay.visible = false
+		if _confirm_action.is_valid():
+			_confirm_action.call())
+	_confirm_yes = yes
 	buttons.add_child(yes)
 	var no := _button("Batal", 18)
 	no.size_flags_horizontal = Control.SIZE_EXPAND_FILL

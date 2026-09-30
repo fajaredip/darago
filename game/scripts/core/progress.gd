@@ -9,11 +9,24 @@ signal leveled_up(level: int)
 const FILE := "user://save.cfg"
 const MAX_LEVEL := 20
 const PRIMARY := ["STR", "AGI", "INT", "VIT"]
+## [name, dungeon level]. Clearing a difficulty unlocks the next one. The dungeon
+## level sets how strong enemies are, how much EXP they give and the item level of drops.
+const DIFFICULTIES := [["Easy", 1], ["Normal", 7], ["Hard", 13], ["Master", 20]]
+## Enemy growth per dungeon level above 1.
+const ENEMY_HP_GROWTH := 0.3
+const ENEMY_ATK_GROWTH := 0.2
+const ENEMY_DEF_GROWTH := 1.5
+const ENEMY_EXP_GROWTH := 0.3
+## Player levels above the dungeon level before its EXP drops to a quarter.
+const EXP_LEVEL_GAP := 5
 
 var level := 1
 ## EXP collected toward the next level.
 var experience := 0
 var gold := 0
+## Chosen difficulty (index into DIFFICULTIES) and the hardest one unlocked so far.
+var difficulty := 0
+var unlocked := 0
 
 var _path := FILE
 var _saving := true
@@ -92,9 +105,61 @@ func reset() -> void:
 	level = 1
 	experience = 0
 	gold = 0
+	difficulty = 0
+	unlocked = 0
 	Inventory.clear()
 	save_file()
 	changed.emit()
+
+
+# --- Difficulty -----------------------------------------------------------------
+
+func dungeon_level() -> int:
+	return int(DIFFICULTIES[difficulty][1])
+
+
+func difficulty_name(index := -1) -> String:
+	return String(DIFFICULTIES[difficulty if index < 0 else index][0])
+
+
+## A difficulty is open once the one before it was cleared, or once the
+## character has reached its dungeon level.
+func is_unlocked(index: int) -> bool:
+	return index <= unlocked or level >= int(DIFFICULTIES[index][1])
+
+
+func set_difficulty(index: int) -> void:
+	if index < 0 or index >= DIFFICULTIES.size() or not is_unlocked(index):
+		return
+	difficulty = index
+	save_file()
+	changed.emit()
+
+
+## Called when the boss falls: opens the next difficulty.
+func on_dungeon_cleared() -> void:
+	if difficulty >= unlocked and unlocked < DIFFICULTIES.size() - 1:
+		unlocked = difficulty + 1
+	save_file()
+	changed.emit()
+
+
+## Copy of an enemy's stats, grown to the current dungeon level. Also scales its
+## EXP, cut to a quarter when the character far outlevels the dungeon.
+func scale_enemy(base: EnemyStats) -> EnemyStats:
+	var s: EnemyStats = base.duplicate()
+	var up := float(dungeon_level() - 1)
+	s.max_hp = base.max_hp * (1.0 + ENEMY_HP_GROWTH * up)
+	s.attack_power = base.attack_power * (1.0 + ENEMY_ATK_GROWTH * up)
+	s.defense = base.defense + ENEMY_DEF_GROWTH * up
+	var exp_amount := float(base.exp_reward) * (1.0 + ENEMY_EXP_GROWTH * up)
+	if level > dungeon_level() + EXP_LEVEL_GAP:
+		exp_amount *= 0.25
+	s.exp_reward = maxi(1, roundi(exp_amount))
+	s.gold_min = roundi(base.gold_min * (1.0 + 0.2 * up))
+	s.gold_max = roundi(base.gold_max * (1.0 + 0.2 * up))
+	s.display_name = "%s  Lv %d" % [base.display_name, dungeon_level()]
+	return s
 
 
 func add_gold(amount: int) -> void:
@@ -110,6 +175,8 @@ func save_file() -> void:
 	cfg.set_value("character", "level", level)
 	cfg.set_value("character", "experience", experience)
 	cfg.set_value("character", "gold", gold)
+	cfg.set_value("character", "difficulty", difficulty)
+	cfg.set_value("character", "unlocked", unlocked)
 	cfg.set_value("inventory", "data", Inventory.serialize())
 	cfg.save(_path)
 
@@ -121,6 +188,8 @@ func load_file() -> void:
 	level = clampi(int(cfg.get_value("character", "level", 1)), 1, MAX_LEVEL)
 	experience = maxi(int(cfg.get_value("character", "experience", 0)), 0)
 	gold = maxi(int(cfg.get_value("character", "gold", 0)), 0)
+	unlocked = clampi(int(cfg.get_value("character", "unlocked", 0)), 0, DIFFICULTIES.size() - 1)
+	difficulty = clampi(int(cfg.get_value("character", "difficulty", 0)), 0, unlocked)
 	var bag: Variant = cfg.get_value("inventory", "data", {})
 	if bag is Dictionary:
 		Inventory.deserialize(bag)

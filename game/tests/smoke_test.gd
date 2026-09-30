@@ -356,6 +356,30 @@ func _run() -> void:
 	_check(Inventory.equipped_slot(rings[1]) == "accessory_2" and Inventory.equipped_slot(rings[2]) == "accessory"
 			and not Inventory.is_equipped(rings[0]), "two rings fill both ring slots; a third replaces the first")
 	_check(ItemDB.icon(Inventory.equipped["helmet"]) != null and ItemDB.icon({}, "accessory_2") != null, "every slot has an icon")
+	# The equipped sword shows in the hand; a longer blade gets a longer slash trail.
+	Inventory.add(ItemDB.generate("weapon", 17, 1, item_rng))
+	var knight_id := int(Inventory.items.back()["id"])
+	Inventory.equip(knight_id)
+	await _frames(2)
+	_check(p._weapon.scene_file_path.ends_with("sword_2handed_color.gltf"), "equipping Pedang Ksatria puts that sword in the hand (%s)" % p._weapon.scene_file_path.get_file())
+	Inventory.unequip("weapon")
+	await _frames(2)
+	_check(p._weapon.scene_file_path == p.stats.weapon.resource_path, "taking the weapon off brings back the default sword")
+	# Difficulty: the dungeon level grows enemies; clearing opens the next difficulty.
+	var grunt_base: EnemyStats = load("res://data/enemies/grunt.tres")
+	_check(is_equal_approx(Progress.scale_enemy(grunt_base).max_hp, grunt_base.max_hp), "Easy (Lv 1) keeps enemy stats as designed")
+	var saved_unlock := Progress.unlocked
+	Progress.unlocked = 0
+	_check(not Progress.is_unlocked(2), "Hard starts locked for a low-level character")
+	Progress.difficulty = 1
+	var normal_grunt := Progress.scale_enemy(grunt_base)
+	_check(normal_grunt.max_hp > grunt_base.max_hp * 2.0 and normal_grunt.attack_power > grunt_base.attack_power
+			and normal_grunt.display_name.ends_with("Lv 7"), "Normal (Lv 7) enemies are tougher (HP %d, ATK %d)" % [normal_grunt.max_hp, normal_grunt.attack_power])
+	Progress.unlocked = 1
+	Progress.on_dungeon_cleared()
+	_check(Progress.unlocked == 2, "clearing Normal unlocks Hard")
+	Progress.difficulty = 0
+	Progress.unlocked = saved_unlock
 	bag.close()
 	await _frames(2)
 	_check(not bag.is_open() and not get_tree().paused, "closing the inventory resumes the game")
