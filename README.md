@@ -32,11 +32,12 @@ Tanpa file .bat: buka `game/project.godot` dengan Godot 4.7.2.
 | Klik kanan | tebasan naik (melempar musuh ke udara) |
 | Spasi | lompat; di udara klik kiri = combo udara, klik kanan = hantaman terjun |
 | Tekan arah 2x cepat (atau Shift) | dodge |
-| 1 / 2 (atau Q / E) | skill Tebasan Terjang / Putaran Badai |
+| 1 - 0 | quickslot: skill dan potion (awal: 1 Tebasan Terjang, 2 Putaran Badai, 3 / 4 potion HP / MP; Q / E cadangan untuk 1 / 2) |
 | Tahan Alt | kursor mouse |
 | F1 | tampilkan / sembunyikan daftar tombol (otomatis mengecil setelah 20 detik) |
 | C | jendela status (level, EXP, STR/AGI/INT/VIT, stat tempur) |
 | I | inventory: pakai / lepas equipment, enhance (+1 sampai +5), jual item (game di-pause) |
+| K | skill tree: naikkan skill dengan SP (3 per level), seret skill / potion ke quickslot, reset SP gratis (game di-pause) |
 | `\` | screenshot (tersalin ke clipboard + disimpan di `screenshots/`) |
 | Esc | menu pengaturan (game di-pause): ganti tombol, sensitivitas mouse, volume, keluar |
 

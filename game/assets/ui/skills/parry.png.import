@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bngetes7ss2ye"
-path="res://.godot/imported/quick-slash.svg-01a086c8bd4b8d89ed079ffd492d3304.ctex"
+uid="uid://xdktn1w20sjq"
+path="res://.godot/imported/parry.png-96978211b2015c2f32f312db52266461.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/icons/quick-slash.svg"
-dest_files=["res://.godot/imported/quick-slash.svg-01a086c8bd4b8d89ed079ffd492d3304.ctex"]
+source_file="res://assets/ui/skills/parry.png"
+dest_files=["res://.godot/imported/parry.png-96978211b2015c2f32f312db52266461.ctex"]
 
 [params]
 
@@ -38,6 +38,3 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
-svg/scale=1.0
-editor/scale_with_editor_scale=false
-editor/convert_colors_with_editor_theme=false

@@ -1,0 +1,29 @@
+[gd_resource type="Resource" script_class="AttackData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/attack_data.gd" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+display_name = "Tangkisan"
+startup = 0.55
+active = 0.1
+recovery = 0.3
+cancel_after = 0.5
+radius = 3.2
+arc_degrees = 160.0
+height = 2.0
+damage_multiplier = 2.4
+hitstop = 0.1
+hitstun = 0.7
+knockback = 4.0
+iframes = 0.55
+mana_gain = 0.0
+camera_shake = 0.12
+lunge_distance = 0.8
+mana_cost = 12.0
+cooldown = 9.0
+color = Color(0.8, 1, 0.85, 1)
+hit_sound = "hit_heavy"
+animation = &"ual2/Sword_Block"
+recovery_animation = &"ual2/Sword_Regular_B"
+voice = true

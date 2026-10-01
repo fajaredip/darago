@@ -33,9 +33,17 @@ var facing := Vector3.FORWARD
 var body_radius := BODY_RADIUS
 var combo_hits := 0
 var combo_timer := 0.0
-var skill_cooldowns: Array[float] = [0.0, 0.0]
-## Short timer the HUD uses to flash a skill that could not be used.
-var skill_denied_time: Array[float] = [0.0, 0.0]
+## Skill id -> seconds left on its cooldown.
+var skill_cooldowns := {}
+## Per quickslot: short timer the HUD uses to flash a slot that could not be used.
+var slot_denied: Array[float] = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+## Temporary ATK bonus (e.g. War Cry) and its time left.
+var attack_buff := 0.0
+var attack_buff_time := 0.0
+var _buffered_skill: StringName = &""
+var _buffered_slot := -1
+## "id:level" -> AttackData grown to that skill level.
+var _skill_attacks := {}
 var dodge_cooldown := 0.0
 const POTION_MAX_CD := 8.0
 var hp_potions := 5
@@ -127,9 +135,13 @@ func can_be_hit() -> bool:
 	return state != State.DEAD
 
 
-## Queue an action: "attack", "heavy", "jump", "dodge", "skill_1" or "skill_2".
+## Queue an action: "attack", "heavy", "jump", "dodge", or "skill_1" / "skill_2" (quickslots 1 / 2).
 ## Used by input polling and tests; later also the hook for network input.
 func request_action(action: StringName) -> void:
+	# The two default skill keys are quickslots 1 and 2.
+	if action == &"skill_1" or action == &"skill_2":
+		use_quickslot(0 if action == &"skill_1" else 1)
+		return
 	_buffered = action
 	_buffer_left = stats.input_buffer
 
@@ -234,14 +246,9 @@ func _read_input() -> void:
 		request_action(&"dodge")
 	if Input.is_action_just_pressed("jump"):
 		request_action(&"jump")
-	if Input.is_action_just_pressed("skill_1"):
-		request_action(&"skill_1")
-	if Input.is_action_just_pressed("skill_2"):
-		request_action(&"skill_2")
-	if Input.is_action_just_pressed("potion_hp"):
-		use_hp_potion()
-	if Input.is_action_just_pressed("potion_mp"):
-		use_mp_potion()
+	for i in Progress.QUICKSLOT_ACTIONS.size():
+		if Input.is_action_just_pressed(Progress.QUICKSLOT_ACTIONS[i]):
+			use_quickslot(i)
 	if Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		if Input.is_action_just_pressed("heavy"):
 			request_action(&"heavy")
@@ -318,20 +325,27 @@ func _try_buffered(can_act: bool, can_dodge: bool) -> bool:
 			_consume_buffer()
 			_start_dodge()
 			return true
-		&"skill_1", &"skill_2":
+		&"skill":
 			if not can_act:
 				return false
-			var i := 0 if _buffered == &"skill_1" else 1
-			var skill := stats.skill_1 if i == 0 else stats.skill_2
+			var skill := Progress.find_skill(stats, _buffered_skill)
+			var slot := _buffered_slot
 			_consume_buffer()
-			if skill == null or skill_cooldowns[i] > 0.0 or mana < skill.mana_cost:
-				skill_denied_time[i] = 0.4
+			var lv := Progress.skill_level(skill) if skill else 0
+			if skill == null or skill.kind != SkillData.Kind.ACTIVE or lv <= 0:
+				return false
+			var a := skill_attack(skill, lv)
+			if float(skill_cooldowns.get(skill.id, 0.0)) > 0.0 or mana < a.mana_cost:
+				if slot >= 0:
+					slot_denied[slot] = 0.4
 				Sfx.play("deny")
 				return false
-			mana -= skill.mana_cost
-			skill_cooldowns[i] = skill.cooldown
+			mana -= a.mana_cost
+			skill_cooldowns[skill.id] = a.cooldown
+			if skill.buff_duration > 0.0:
+				_apply_attack_buff(skill.buff_at(lv), skill.buff_duration)
 			_combo_index = -1
-			_start_attack(skill, true)
+			_start_attack(a, true)
 			return true
 	return false
 
@@ -524,7 +538,7 @@ func _process_hits(a: AttackData) -> void:
 		if rec.x >= a.hits or _state_time - rec.y < a.hit_interval:
 			continue
 		_hit_log[target] = Vector2(rec.x + 1.0, _state_time)
-		var dmg := stats.attack_power * a.damage_multiplier * randf_range(0.92, 1.08)
+		var dmg := stats.attack_power * (1.0 + attack_buff) * a.damage_multiplier * randf_range(0.92, 1.08)
 		var crit := randf() < stats.crit_chance
 		if crit:
 			dmg *= stats.crit_multiplier
@@ -556,9 +570,14 @@ func _tick_timers(delta: float) -> void:
 	dodge_cooldown = maxf(0.0, dodge_cooldown - delta)
 	hp_potion_cd = maxf(0.0, hp_potion_cd - delta)
 	mp_potion_cd = maxf(0.0, mp_potion_cd - delta)
-	for i in skill_cooldowns.size():
-		skill_cooldowns[i] = maxf(0.0, skill_cooldowns[i] - delta)
-		skill_denied_time[i] = maxf(0.0, skill_denied_time[i] - delta)
+	for id in skill_cooldowns.keys():
+		skill_cooldowns[id] = maxf(0.0, float(skill_cooldowns[id]) - delta)
+	for i in slot_denied.size():
+		slot_denied[i] = maxf(0.0, slot_denied[i] - delta)
+	if attack_buff_time > 0.0:
+		attack_buff_time -= delta
+		if attack_buff_time <= 0.0:
+			attack_buff = 0.0
 	_buffer_left -= delta
 	_land_anim_left -= delta
 	if _combo_grace > 0.0:
@@ -803,3 +822,32 @@ func _blade_length(model: Node3D) -> float:
 			n = n.get_parent()
 		reach = maxf(reach, (t * mi.get_aabb()).end.y)
 	return reach
+
+
+## Uses whatever sits in quickslot `index`: a learned active skill or a potion.
+func use_quickslot(index: int) -> void:
+	var entry := Progress.quickslot(index)
+	if entry == "potion_hp":
+		use_hp_potion()
+	elif entry == "potion_mp":
+		use_mp_potion()
+	elif entry.begins_with("skill:"):
+		_buffered_skill = StringName(entry.trim_prefix("skill:"))
+		_buffered_slot = index
+		request_action(&"skill")
+
+
+## The skill's attack at `level` (cached: damage, cooldown and MP grow with the level).
+func skill_attack(skill: SkillData, level: int) -> AttackData:
+	var key := "%s:%d" % [skill.id, level]
+	if not _skill_attacks.has(key):
+		_skill_attacks[key] = skill.attack_at(level)
+	return _skill_attacks[key]
+
+
+func _apply_attack_buff(amount: float, duration: float) -> void:
+	attack_buff = amount
+	attack_buff_time = duration
+	var c := Color(1.0, 0.45, 0.25)
+	Vfx.ring(global_position + Vector3.UP * 0.05, 3.0, c, 0.5)
+	Vfx.float_text(global_position + Vector3.UP * 2.4, "ATK +%d%%" % roundi(amount * 100.0), c, 0.8)

@@ -1,0 +1,30 @@
+[gd_resource type="Resource" script_class="AttackData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/attack_data.gd" id="1_attack"]
+
+[resource]
+script = ExtResource("1_attack")
+display_name = "Teriakan Perang"
+startup = 0.3
+active = 0.08
+recovery = 0.35
+cancel_after = 0.5
+radius = 3.5
+arc_degrees = 360.0
+height = 2.5
+damage_multiplier = 0.3
+hitstop = 0.02
+hitstun = 0.9
+knockback = 3.0
+mana_gain = 0.0
+camera_shake = 0.2
+lunge_distance = 0.0
+super_armor = true
+impact_ring = true
+impact_offset = 0.0
+impact_radius = 3.5
+mana_cost = 25.0
+cooldown = 20.0
+color = Color(1, 0.45, 0.25, 1)
+animation = &"ual1/Spell_Simple_Shoot"
+voice = true

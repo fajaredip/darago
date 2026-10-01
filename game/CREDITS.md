@@ -17,8 +17,8 @@ All third-party assets below are free to use in personal and commercial projects
 | Determined Pursuit (epic orchestra loop), battle music | Emma_MA | CC0 | https://opengameart.org/content/determined-pursuit-epic-orchestra-loop |
 | Epic Boss Battle (seamless loop), boss music | Juhani Junkala (SubspaceAudio) | CC0 | https://opengameart.org/content/boss-battle-music |
 | Forgotten Tomb Ambience | kindland | CC0 | https://opengameart.org/content/forgoten-tomb-ambience |
-| UI icons (`assets/ui/icons`, black background removed): quick-slash, sword-spin, dodging by Lorc; two-coins by Delapouite | Lorc and Delapouite, game-icons.net | CC BY 3.0 | https://game-icons.net (https://github.com/game-icons/icons) |
-| Item icons (`assets/ui/items`) and parchment UI art (`assets/ui/parchment`: panels, buttons, slot, tooltip, close button) | Generated with ChatGPT (OpenAI image generation) for this project by its owner; cut and keyed with `tests/slice_ui_sheet.gd` | Owned by the project owner under OpenAI's terms of use | Source sheets in `art_source/ui_parchment/` |
+| UI icons (`assets/ui/icons`, black background removed): dodging by Lorc; two-coins by Delapouite | Lorc and Delapouite, game-icons.net | CC BY 3.0 | https://game-icons.net (https://github.com/game-icons/icons) |
+| Item icons (`assets/ui/items`), skill icons (`assets/ui/skills`) and parchment UI art (`assets/ui/parchment`: panels, buttons, slot, tooltip, close button) | Generated with ChatGPT (OpenAI image generation) for this project by its owner; cut and keyed with `tests/slice_ui_sheet.gd` | Owned by the project owner under OpenAI's terms of use | Source sheets in `art_source/ui_parchment/` |
 | Fantasy UI Borders (`assets/ui/frames/divider.png`) | Kenney | CC0 | https://kenney.nl/assets/fantasy-ui-borders |
 | Nunito font (`assets/fonts/Nunito.ttf`, UI text) | The Nunito Project Authors | SIL OFL 1.1 (`assets/fonts/OFL-Nunito.txt`) | https://github.com/googlefonts/nunito |
 | Cinzel font (`assets/fonts/Cinzel.ttf`, titles) | The Cinzel Project Authors | SIL OFL 1.1 (`assets/fonts/OFL-Cinzel.txt`) | https://github.com/NDISCOVER/Cinzel |

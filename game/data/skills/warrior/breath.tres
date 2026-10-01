@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="SkillData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/skill_data.gd" id="1_skill"]
+
+[ext_resource type="Texture2D" path="res://assets/ui/skills/breath.png" id="3_icon"]
+
+[resource]
+script = ExtResource("1_skill")
+id = &"breath"
+display_name = "Napas Pejuang"
+description = "Pasif: mempercepat pemulihan MP."
+icon = ExtResource("3_icon")
+kind = 1
+grid_pos = Vector2i(2, 3)
+default_skill = false
+max_level = 5
+sp_first = 2
+sp_per_level = 2
+required_level = 7
+level_step = 2
+requires = &""
+requires_level = 1
+
+passive_stat = "MP_REGEN%"
+passive_per_level = 0.1

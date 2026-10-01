@@ -4,10 +4,6 @@ extends CanvasLayer
 ## wave / enemy counter, wave announcements, help line and the win / lose screen.
 
 const TITLE_FONT := preload("res://assets/fonts/title_font.tres")
-const DEFAULT_ICONS: Array[Texture2D] = [
-	preload("res://assets/ui/icons/quick-slash.svg"),
-	preload("res://assets/ui/icons/sword-spin.svg"),
-]
 const POTION_HP_ICON := preload("res://assets/ui/items/potion_hp.png")
 const POTION_MP_ICON := preload("res://assets/ui/items/potion_mp.png")
 const DODGE_ICON := preload("res://assets/ui/icons/dodging.svg")
@@ -78,22 +74,11 @@ func _ready() -> void:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bottom.add_child(row)
 	var stats := Game.player.stats
-	var skills: Array[AttackData] = [stats.skill_1, stats.skill_2]
-	# Slot 1: Skill 1
-	var icon0: Texture2D = skills[0].icon if skills[0].icon else DEFAULT_ICONS[0]
-	_slots.append(_add_slot(row, icon0, skills[0].color, skills[0].display_name))
-	# Slot 2: Skill 2
-	var icon1: Texture2D = skills[1].icon if skills[1].icon else DEFAULT_ICONS[1]
-	_slots.append(_add_slot(row, icon1, skills[1].color, skills[1].display_name))
-	# Slot 3: Potion HP
-	_slots.append(_add_slot(row, POTION_HP_ICON, Color(0.95, 0.25, 0.3), "HP"))
-	_slots.back().full_color = true
-	# Slot 4: Potion MP
-	_slots.append(_add_slot(row, POTION_MP_ICON, Color(0.25, 0.6, 1.0), "MP"))
-	_slots.back().full_color = true
-	# Slots 5 - 10: Empty slots
-	for i in range(5, 11):
+	# 10 quickslots (keys 1-0); what each holds comes from Progress.quickslots.
+	for i in Progress.QUICKSLOT_ACTIONS.size():
 		_slots.append(_add_slot(row, null, Color(0.3, 0.3, 0.35), ""))
+	Progress.changed.connect(_refresh_quickslots)
+	_refresh_quickslots()
 
 	# Separator before Dodge
 	var sep := Control.new()
@@ -224,24 +209,16 @@ func _refresh_key_hints() -> void:
 			single = single and k.length() == 1
 		var move_text := "".join(move) if single else "/".join(move)
 		_help.text = ("%s: gerak    Mouse: kamera    %s: serang (tahan = combo)    %s: serangan berat    %s: lompat\n"
-				+ "Tekan arah 2x / %s: dodge    1-2: skill    3: Potion HP    4: Potion MP    %s: status    %s: inventory    Esc: menu    %s: screenshot    %s: bantuan") % [
+				+ "Tekan arah 2x / %s: dodge    1-0: quickslot    %s: status    %s: skill    %s: inventory    Esc: menu    %s: screenshot    %s: bantuan") % [
 				move_text, s.key_name(&"attack"), s.key_name(&"heavy"), s.key_name(&"jump"), s.key_name(&"dodge"),
-				s.key_name(&"status"), s.key_name(&"inventory"), s.key_name(&"screenshot"), s.key_name(&"help")]
+				s.key_name(&"status"), s.key_name(&"skills"), s.key_name(&"inventory"), s.key_name(&"screenshot"), s.key_name(&"help")]
 		_help.modulate.a = 1.0
 	else:
 		_help.text = "%s: bantuan tombol" % s.key_name(&"help")
 		_help.modulate.a = 0.6
-	if _slots.size() >= 10:
-		_slots[0].set_key(s.key_name(&"skill_1"))
-		_slots[1].set_key(s.key_name(&"skill_2"))
-		_slots[2].set_key(s.key_name(&"potion_hp"))
-		_slots[3].set_key(s.key_name(&"potion_mp"))
-		_slots[4].set_key(s.key_name(&"quickslot_5"))
-		_slots[5].set_key(s.key_name(&"quickslot_6"))
-		_slots[6].set_key(s.key_name(&"quickslot_7"))
-		_slots[7].set_key(s.key_name(&"quickslot_8"))
-		_slots[8].set_key(s.key_name(&"quickslot_9"))
-		_slots[9].set_key(s.key_name(&"quickslot_0"))
+	if _slots.size() >= Progress.QUICKSLOT_ACTIONS.size():
+		for i in Progress.QUICKSLOT_ACTIONS.size():
+			_slots[i].set_key(s.key_name(Progress.QUICKSLOT_ACTIONS[i]))
 	if _dodge_slot:
 		_dodge_slot.set_key(s.key_name(&"dodge"))
 
@@ -308,15 +285,7 @@ func _process(delta: float) -> void:
 		_vignette.hit(clampf((_last_hp - p.hp) / (p.stats.max_hp * 0.12), 0.5, 1.0))
 	_last_hp = p.hp
 	_vignette.update(_hp_bar.fraction(), delta)
-	var skills: Array[AttackData] = [p.stats.skill_1, p.stats.skill_2]
-	for i in skills.size():
-		_slots[i].set_state(p.skill_cooldowns[i], skills[i].cooldown,
-				p.mana >= skills[i].mana_cost, p.skill_denied_time[i] > 0.0)
-	if _slots.size() >= 4:
-		_slots[2].set_state(p.hp_potion_cd, Player.POTION_MAX_CD, p.hp_potions > 0 and p.hp < p.stats.max_hp, false)
-		_slots[2].set_count(p.hp_potions)
-		_slots[3].set_state(p.mp_potion_cd, Player.POTION_MAX_CD, p.mp_potions > 0 and p.mana < p.stats.max_mana, false)
-		_slots[3].set_count(p.mp_potions)
+	_update_quickslots(p)
 	if _dodge_slot:
 		_dodge_slot.set_state(p.dodge_cooldown, p.stats.dodge_cooldown, true, false)
 	_update_combo(p.combo_hits)
@@ -429,3 +398,50 @@ func _anchor(c: Control, left: float, top: float, right: float, bottom: float,
 	c.offset_top = off_top
 	c.offset_right = off_right
 	c.offset_bottom = off_bottom
+
+
+## Icons of the quickslots follow what the player put in them.
+func _refresh_quickslots() -> void:
+	var p := Game.player
+	if p == null or not is_instance_valid(p):
+		return
+	for i in _slots.size():
+		var entry := Progress.quickslot(i)
+		if entry == "potion_hp":
+			_slots[i].set_icon(POTION_HP_ICON, Color(0.95, 0.25, 0.3), true)
+		elif entry == "potion_mp":
+			_slots[i].set_icon(POTION_MP_ICON, Color(0.25, 0.6, 1.0), true)
+		elif entry.begins_with("skill:"):
+			var skill := Progress.find_skill(p.stats, StringName(entry.trim_prefix("skill:")))
+			if skill:
+				var color := skill.attack.color if skill.attack else Color.WHITE
+				_slots[i].set_icon(skill.icon, color, true)
+			else:
+				_slots[i].set_icon(null, Color(0.3, 0.3, 0.35))
+		else:
+			_slots[i].set_icon(null, Color(0.3, 0.3, 0.35))
+
+
+func _update_quickslots(p: Player) -> void:
+	for i in _slots.size():
+		var slot := _slots[i]
+		var entry := Progress.quickslot(i)
+		if entry == "potion_hp":
+			slot.set_state(p.hp_potion_cd, Player.POTION_MAX_CD, p.hp_potions > 0 and p.hp < p.stats.max_hp, slot_denied(p, i))
+			slot.set_count(p.hp_potions)
+		elif entry == "potion_mp":
+			slot.set_state(p.mp_potion_cd, Player.POTION_MAX_CD, p.mp_potions > 0 and p.mana < p.stats.max_mana, slot_denied(p, i))
+			slot.set_count(p.mp_potions)
+		elif entry.begins_with("skill:"):
+			var skill := Progress.find_skill(p.stats, StringName(entry.trim_prefix("skill:")))
+			slot.set_count(-1)
+			if skill == null or skill.attack == null:
+				continue
+			var a := p.skill_attack(skill, maxi(Progress.skill_level(skill), 1))
+			slot.set_state(float(p.skill_cooldowns.get(skill.id, 0.0)), a.cooldown, p.mana >= a.mana_cost, slot_denied(p, i))
+		else:
+			slot.set_count(-1)
+
+
+func slot_denied(p: Player, i: int) -> bool:
+	return i < p.slot_denied.size() and p.slot_denied[i] > 0.0

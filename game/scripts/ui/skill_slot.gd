@@ -63,6 +63,15 @@ func _init(icon: Texture2D, color: Color, title: String, size_px: float = DEFAUL
 		add_child(_name_label)
 
 
+## Changes what the slot shows (a skill, a potion, or nothing when `icon` is null).
+func set_icon(icon: Texture2D, color: Color, art_in_colour := false) -> void:
+	_icon = icon
+	_color = color
+	full_color = art_in_colour
+	_key_label.add_theme_color_override("font_color", color.lightened(0.45) if icon else Color(0.7, 0.7, 0.7))
+	queue_redraw()
+
+
 func set_key(text: String) -> void:
 	_key_label.text = text
 

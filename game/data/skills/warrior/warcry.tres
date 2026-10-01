@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="SkillData" format=3]
+
+[ext_resource type="Script" path="res://scripts/combat/skill_data.gd" id="1_skill"]
+[ext_resource type="Resource" path="res://data/attacks/skill_warcry.tres" id="2_attack"]
+[ext_resource type="Texture2D" path="res://assets/ui/skills/warcry.png" id="3_icon"]
+
+[resource]
+script = ExtResource("1_skill")
+id = &"warcry"
+display_name = "Teriakan Perang"
+description = "Teriakan yang mengguncang musuh di sekitar dan menaikkan ATK sementara."
+icon = ExtResource("3_icon")
+kind = 0
+grid_pos = Vector2i(1, 2)
+default_skill = false
+max_level = 5
+sp_first = 3
+sp_per_level = 2
+required_level = 12
+level_step = 3
+requires = &"whirl"
+requires_level = 3
+attack = ExtResource("2_attack")
+buff_attack = 0.15
+buff_attack_per_level = 0.04
+buff_duration = 12.0

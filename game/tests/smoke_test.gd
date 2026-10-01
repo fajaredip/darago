@@ -104,7 +104,7 @@ func _run() -> void:
 	await _frames(4)
 	_check(p.state == Player.State.ATTACK and p._is_skill, "dash skill starts")
 	_check(p.mana <= mana_before - 19.0, "dash skill costs mana")
-	_check(p.skill_cooldowns[0] > 4.0, "dash skill goes on cooldown")
+	_check(float(p.skill_cooldowns.get(&"dash", 0.0)) > 4.0, "dash skill goes on cooldown")
 	var hud_ui: Hud = get_tree().get_first_node_in_group("hud")
 	_check(hud_ui._slots[0]._cd_label.text != "", "skill bar shows the dash cooldown")
 	_check(hud_ui._objective.text.contains("Musuh  3 / 3"), "top-right shows the enemy count (%s)" % hud_ui._objective.text.replace("\n", " | "))
@@ -383,6 +383,64 @@ func _run() -> void:
 	bag.close()
 	await _frames(2)
 	_check(not bag.is_open() and not get_tree().paused, "closing the inventory resumes the game")
+
+	# Skill tree: SP per level, raising skills, passives, quickslots, reset.
+	var saved_lv := Progress.level
+	Progress.skill_levels = {}
+	Progress.quickslots = Progress.DEFAULT_QUICKSLOTS.duplicate()
+	Progress.level = 10
+	var crescent := Progress.find_skill(p.stats, &"crescent")
+	var smash := Progress.find_skill(p.stats, &"smash")
+	var dash := Progress.find_skill(p.stats, &"dash")
+	_check(Progress.skills_for(p.stats).size() == 12 and Progress.skill_level(dash) == 1 and Progress.skill_level(crescent) == 0,
+			"Warrior has 12 skills; default skills start at Lv 1")
+	_check(Progress.sp_left(p.stats) == 30, "3 SP per character level (Lv 10 = 30 SP, got %d)" % Progress.sp_left(p.stats))
+	_check(Progress.raise_blocker(p.stats, smash).begins_with("Butuh Tebasan Bulan"), "a skill needs its prerequisite first (%s)" % Progress.raise_blocker(p.stats, smash))
+	_check(Progress.raise_skill(p.stats, crescent) and Progress.sp_left(p.stats) == 27, "learning a skill spends its SP")
+	var dmg_1 := p.skill_attack(crescent, 1).damage_multiplier
+	Progress.raise_skill(p.stats, crescent)
+	_check(p.skill_attack(crescent, 2).damage_multiplier > dmg_1 and Progress.raise_skill(p.stats, smash), "higher skill levels hit harder and unlock the next skill")
+	var hp_before_passive := p.stats.max_hp
+	Progress.raise_skill(p.stats, Progress.find_skill(p.stats, &"iron_body"))
+	Progress.apply_to(p.stats)
+	_check(p.stats.max_hp > hp_before_passive, "passive Iron Body raises max HP (%d -> %d)" % [hp_before_passive, p.stats.max_hp])
+	var skills_win: SkillWindow = get_tree().current_scene.get_node("SkillWindow")
+	var key_k := InputEventKey.new()
+	key_k.physical_keycode = KEY_K
+	key_k.pressed = true
+	Input.parse_input_event(key_k)
+	await _frames(3)
+	_check(skills_win.is_open() and skills_win._sp_left.is_visible_in_tree(), "K opens the skill window (on screen)")
+	skills_win._quick[4]._drop_data(Vector2.ZERO, {"entry": "skill:crescent"})
+	_check(Progress.quickslot(4) == "skill:crescent", "dropping a skill on quickslot 5 puts it there")
+	skills_win._quick[1]._drop_data(Vector2.ZERO, {"entry": "skill:crescent", "from_slot": 4})
+	_check(Progress.quickslot(1) == "skill:crescent" and Progress.quickslot(4) == "skill:whirl", "dragging between quickslots swaps them")
+	await _shot("10g_skills")
+	skills_win.close()
+	await _frames(2)
+	p.mana = p.stats.max_mana
+	p.skill_cooldowns.clear()
+	p.use_quickslot(1)
+	await _frames(4)
+	_check(p.state == Player.State.ATTACK and float(p.skill_cooldowns.get(&"crescent", 0.0)) > 0.0, "the key of a quickslot uses the skill in it")
+	await _frames(90)
+	Progress.level = 14
+	Progress.raise_skill(p.stats, Progress.find_skill(p.stats, &"whirl"))
+	Progress.raise_skill(p.stats, Progress.find_skill(p.stats, &"whirl"))
+	Progress.raise_skill(p.stats, Progress.find_skill(p.stats, &"warcry"))
+	Progress.set_quickslot(6, "skill:warcry")
+	p.mana = p.stats.max_mana
+	p.use_quickslot(6)
+	await _frames(4)
+	_check(p.attack_buff > 0.1 and p.attack_buff_time > 5.0, "War Cry gives a timed ATK buff (+%d%%)" % roundi(p.attack_buff * 100.0))
+	await _frames(90)
+	Progress.reset_skills(p.stats)
+	_check(Progress.skill_level(crescent) == 0 and Progress.skill_level(dash) == 1 and Progress.quickslot(1) == "" and Progress.sp_left(p.stats) == Progress.sp_total(),
+			"Reset SP refunds everything and clears unlearned skills from the quickslots")
+	Progress.level = saved_lv
+	Progress.quickslots = Progress.DEFAULT_QUICKSLOTS.duplicate()
+	Progress.apply_to(p.stats)
+	Progress.changed.emit()
 
 	# A pillar between camera and player turns see-through; the camera does not snap in.
 	var rig := Game.camera_rig

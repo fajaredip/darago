@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ccg4d3b4q0c23"
-path="res://.godot/imported/sword-spin.svg-68a1249c76d39504240070e3539ae948.ctex"
+uid="uid://bk7l5yly0twdc"
+path="res://.godot/imported/flurry.png-a5bd92afa9a7585e727d4c529fe55c9f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/icons/sword-spin.svg"
-dest_files=["res://.godot/imported/sword-spin.svg-68a1249c76d39504240070e3539ae948.ctex"]
+source_file="res://assets/ui/skills/flurry.png"
+dest_files=["res://.godot/imported/flurry.png-a5bd92afa9a7585e727d4c529fe55c9f.ctex"]
 
 [params]
 
@@ -38,6 +38,3 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
-svg/scale=1.0
-editor/scale_with_editor_scale=false
-editor/convert_colors_with_editor_theme=false

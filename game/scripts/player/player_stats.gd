@@ -51,6 +51,10 @@ extends Resource
 ## Jeda maksimum antara dua tekanan arah yang sama supaya jadi dodge (detik).
 @export var double_tap_window := 0.25
 
+@export_group("Skill")
+## Folder with this class's skill tree (one SkillData .tres per skill).
+@export_dir var skill_dir := "res://data/skills/warrior"
+
 @export_group("Combat")
 ## Urutan combo klik kiri.
 @export var combo: Array[AttackData] = []

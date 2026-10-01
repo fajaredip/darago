@@ -77,6 +77,9 @@ func _ready() -> void:
 	var bag := InventoryWindow.new()
 	bag.name = "InventoryWindow"
 	add_child(bag)
+	var skill_window := SkillWindow.new()
+	skill_window.name = "SkillWindow"
+	add_child(skill_window)  # also after the menu, for Esc
 
 	get_tree().create_timer(1.0).timeout.connect(_next_wave)
 

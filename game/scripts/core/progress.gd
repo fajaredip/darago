@@ -94,6 +94,146 @@ func apply_to(stats: PlayerStats) -> void:
 	stats.mana_regen = 3.0 + p["INT"] * 0.25
 	stats.max_hp = 180.0 + p["VIT"] * 20.0 + float(gear.get("HP", 0))
 	stats.defense = p["VIT"] * 0.5 - 3.0 + float(gear.get("DEF", 0))
+	# Passive skills.
+	for skill in skills_for(stats):
+		var lv := skill_level(skill)
+		if skill.kind != SkillData.Kind.PASSIVE or lv <= 0:
+			continue
+		var v := skill.passive_at(lv)
+		match skill.passive_stat:
+			"HP%":
+				stats.max_hp *= 1.0 + v
+			"DEF%":
+				stats.defense *= 1.0 + v
+			"CRIT":
+				stats.crit_chance += v
+			"MP_REGEN%":
+				stats.mana_regen *= 1.0 + v
+
+
+# --- Skills (SP, levels, quickslots) ------------------------------------------------
+
+## SP earned per character level (Lv 1 already gives one batch).
+const SP_PER_LEVEL := 3
+## Input actions of the 10 quickslots, keys 1-0 by default.
+const QUICKSLOT_ACTIONS: Array[StringName] = [&"skill_1", &"skill_2", &"potion_hp", &"potion_mp",
+		&"quickslot_5", &"quickslot_6", &"quickslot_7", &"quickslot_8", &"quickslot_9", &"quickslot_0"]
+## A quickslot holds "skill:<id>", "potion_hp", "potion_mp" or "" (empty).
+const DEFAULT_QUICKSLOTS := ["skill:dash", "skill:whirl", "potion_hp", "potion_mp", "", "", "", "", "", ""]
+
+## Skill id -> level the player has raised it to (default skills count as at least 1).
+var skill_levels := {}
+var quickslots: Array = DEFAULT_QUICKSLOTS.duplicate()
+var _skill_cache := {}
+
+
+## Every skill of the class (data/skills/<class>/*.tres), in grid order.
+func skills_for(stats: PlayerStats) -> Array[SkillData]:
+	if _skill_cache.has(stats.skill_dir):
+		return _skill_cache[stats.skill_dir]
+	var out: Array[SkillData] = []
+	for file in ResourceLoader.list_directory(stats.skill_dir):
+		if file.ends_with(".tres"):
+			var s := load(stats.skill_dir.path_join(file)) as SkillData
+			if s:
+				out.append(s)
+	out.sort_custom(func(a: SkillData, b: SkillData) -> bool:
+		return a.grid_pos.y < b.grid_pos.y or (a.grid_pos.y == b.grid_pos.y and a.grid_pos.x < b.grid_pos.x))
+	_skill_cache[stats.skill_dir] = out
+	return out
+
+
+func find_skill(stats: PlayerStats, id: StringName) -> SkillData:
+	for s in skills_for(stats):
+		if s.id == id:
+			return s
+	return null
+
+
+func skill_level(skill: SkillData) -> int:
+	var lv := int(skill_levels.get(String(skill.id), 0))
+	return maxi(lv, 1) if skill.default_skill else lv
+
+
+func sp_total() -> int:
+	return SP_PER_LEVEL * level
+
+
+func sp_spent(stats: PlayerStats) -> int:
+	var spent := 0
+	for skill in skills_for(stats):
+		var start := 2 if skill.default_skill else 1  # a default skill's Lv 1 is free
+		for lv in range(start, skill_level(skill) + 1):
+			spent += skill.sp_cost(lv)
+	return spent
+
+
+func sp_left(stats: PlayerStats) -> int:
+	return sp_total() - sp_spent(stats)
+
+
+## Why the skill cannot go up a level right now ("" when it can).
+func raise_blocker(stats: PlayerStats, skill: SkillData) -> String:
+	var next := skill_level(skill) + 1
+	if next > skill.max_level:
+		return "Level maksimal"
+	if level < skill.level_needed(next):
+		return "Butuh Lv karakter %d" % skill.level_needed(next)
+	if skill.requires != &"":
+		var req := find_skill(stats, skill.requires)
+		if req and skill_level(req) < skill.requires_level:
+			return "Butuh %s Lv %d" % [req.display_name, skill.requires_level]
+	if sp_left(stats) < skill.sp_cost(next):
+		return "SP kurang (butuh %d)" % skill.sp_cost(next)
+	return ""
+
+
+func raise_skill(stats: PlayerStats, skill: SkillData) -> bool:
+	if raise_blocker(stats, skill) != "":
+		return false
+	skill_levels[String(skill.id)] = skill_level(skill) + 1
+	save_file()
+	changed.emit()
+	return true
+
+
+## Gives back every SP (default skills stay at Lv 1); skills that are no longer
+## learned leave the quickslots.
+func reset_skills(stats: PlayerStats) -> void:
+	skill_levels = {}
+	for i in quickslots.size():
+		var entry: String = quickslots[i]
+		if entry.begins_with("skill:"):
+			var s := find_skill(stats, StringName(entry.trim_prefix("skill:")))
+			if s == null or skill_level(s) <= 0:
+				quickslots[i] = ""
+	save_file()
+	changed.emit()
+
+
+func quickslot(index: int) -> String:
+	return String(quickslots[index]) if index >= 0 and index < quickslots.size() else ""
+
+
+func set_quickslot(index: int, entry: String) -> void:
+	if index < 0 or index >= quickslots.size():
+		return
+	# One entry lives in one slot: placing it again moves it.
+	if entry != "":
+		for i in quickslots.size():
+			if quickslots[i] == entry:
+				quickslots[i] = ""
+	quickslots[index] = entry
+	save_file()
+	changed.emit()
+
+
+func swap_quickslots(a: int, b: int) -> void:
+	var t: String = quickslots[a]
+	quickslots[a] = quickslots[b]
+	quickslots[b] = t
+	save_file()
+	changed.emit()
 
 
 ## Share of incoming damage that `defense` blocks (same formula as Player.take_hit).
@@ -107,6 +247,8 @@ func reset() -> void:
 	gold = 0
 	difficulty = 0
 	unlocked = 0
+	skill_levels = {}
+	quickslots = DEFAULT_QUICKSLOTS.duplicate()
 	Inventory.clear()
 	save_file()
 	changed.emit()
@@ -177,6 +319,8 @@ func save_file() -> void:
 	cfg.set_value("character", "gold", gold)
 	cfg.set_value("character", "difficulty", difficulty)
 	cfg.set_value("character", "unlocked", unlocked)
+	cfg.set_value("skills", "levels", skill_levels)
+	cfg.set_value("skills", "quickslots", quickslots)
 	cfg.set_value("inventory", "data", Inventory.serialize())
 	cfg.save(_path)
 
@@ -190,6 +334,11 @@ func load_file() -> void:
 	gold = maxi(int(cfg.get_value("character", "gold", 0)), 0)
 	unlocked = clampi(int(cfg.get_value("character", "unlocked", 0)), 0, DIFFICULTIES.size() - 1)
 	difficulty = clampi(int(cfg.get_value("character", "difficulty", 0)), 0, unlocked)
+	var levels: Variant = cfg.get_value("skills", "levels", {})
+	skill_levels = levels if levels is Dictionary else {}
+	var slots: Variant = cfg.get_value("skills", "quickslots", [])
+	if slots is Array and (slots as Array).size() == DEFAULT_QUICKSLOTS.size():
+		quickslots = slots
 	var bag: Variant = cfg.get_value("inventory", "data", {})
 	if bag is Dictionary:
 		Inventory.deserialize(bag)

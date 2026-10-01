@@ -11,9 +11,11 @@ const SLOTS := 2
 const ACTIONS := [
 	[&"move_forward", "Maju"], [&"move_back", "Mundur"], [&"move_left", "Kiri"], [&"move_right", "Kanan"],
 	[&"attack", "Serang"], [&"heavy", "Serangan berat"], [&"jump", "Lompat"], [&"dodge", "Dodge"],
-	[&"skill_1", "Skill 1 (Slot 1)"], [&"skill_2", "Skill 2 (Slot 2)"],
-	[&"potion_hp", "Potion HP (Slot 3)"], [&"potion_mp", "Potion MP (Slot 4)"],
-	[&"interact", "Interaksi (buka peti)"], [&"status", "Jendela status"], [&"inventory", "Inventory"], [&"show_cursor", "Tampilkan kursor (tahan)"],
+	[&"skill_1", "Quickslot 1"], [&"skill_2", "Quickslot 2"],
+	[&"potion_hp", "Quickslot 3"], [&"potion_mp", "Quickslot 4"],
+	[&"quickslot_5", "Quickslot 5"], [&"quickslot_6", "Quickslot 6"], [&"quickslot_7", "Quickslot 7"],
+	[&"quickslot_8", "Quickslot 8"], [&"quickslot_9", "Quickslot 9"], [&"quickslot_0", "Quickslot 10"],
+	[&"interact", "Interaksi (buka peti)"], [&"status", "Jendela status"], [&"skills", "Jendela skill"], [&"inventory", "Inventory"], [&"show_cursor", "Tampilkan kursor (tahan)"],
 	[&"screenshot", "Screenshot"], [&"help", "Tampilkan bantuan"], [&"restart", "Main lagi (setelah selesai)"],
 ]
 const BUSES := [&"Master", &"Music", &"SFX"]
@@ -69,6 +71,7 @@ static func default_bindings() -> Dictionary:
 		&"quickslot_0": [_key(KEY_0), ""],
 		&"status": [_key(KEY_C), ""],
 		&"inventory": [_key(KEY_I), ""],
+		&"skills": [_key(KEY_K), ""],
 		&"show_cursor": [_key(KEY_ALT), ""],
 		&"interact": [_key(KEY_F), ""],
 		&"screenshot": [_key(KEY_BACKSLASH), ""],
