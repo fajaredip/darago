@@ -4,10 +4,12 @@ extends CanvasLayer
 ## the stats on the left, the worn equipment in a column on the right.
 ## Display only, so the game keeps running while it is open.
 
-const GOLD := SettingsMenu.GOLD
-const TEXT := SettingsMenu.TEXT
-const MUTED := SettingsMenu.MUTED
-const VALUE := Color(1.0, 0.82, 0.4)  # numbers in gold, like the reference
+## Ink colours on parchment (same values as UiSkin.INK_*; literal so they never
+## depend on another script compiling first).
+const GOLD := Color(0.45, 0.24, 0.05)
+const TEXT := Color(0.24, 0.16, 0.09)
+const MUTED := Color(0.45, 0.35, 0.25)
+const VALUE := Color(0.45, 0.24, 0.05)  # numbers stand out from the labels, like the reference
 const PRIMARY_HINTS := {"STR": "ATK", "AGI": "Crit", "INT": "MP", "VIT": "HP, DEF"}
 const SLOT_SIZE := 62.0
 
@@ -71,7 +73,8 @@ func refresh() -> void:
 	for slot in ItemDB.EQUIP_SLOTS:
 		var item: Dictionary = Inventory.equipped.get(slot, {})
 		var box: Panel = _slots[slot]
-		box.add_theme_stylebox_override("panel", InventoryWindow.slot_style(item))
+		box.add_theme_stylebox_override("panel", UiSkin.slot())
+		(box.get_meta(&"rarity") as Panel).add_theme_stylebox_override("panel", UiSkin.rarity_border(item))
 		var icon: TextureRect = box.get_meta(&"icon")
 		icon.texture = ItemDB.icon(item, slot)
 		icon.modulate = Color.WHITE if not item.is_empty() else Color(1, 1, 1, 0.12)
@@ -92,11 +95,7 @@ func _put(key: String, text: String) -> void:
 
 func _build() -> void:
 	_panel = PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.07, 0.06, 0.09, 0.93)
-	style.set_corner_radius_all(6)
-	style.set_content_margin_all(28)
-	_panel.add_theme_stylebox_override("panel", style)
+	_panel.add_theme_stylebox_override("panel", UiSkin.panel("red", 10.0))
 	_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_panel.anchor_top = 0.5
 	_panel.anchor_bottom = 0.5
@@ -104,13 +103,12 @@ func _build() -> void:
 	_panel.offset_top = -340.0  # stays clear of the quickslot bar
 	_panel.offset_right = 640.0
 	_panel.offset_bottom = 260.0
-	_panel.draw.connect(func() -> void: _panel.draw_style_box(InventoryWindow.frame_style(), Rect2(Vector2.ZERO, _panel.size)))
 	add_child(_panel)
 
 	var outer := VBoxContainer.new()
 	outer.add_theme_constant_override("separation", 6)
 	_panel.add_child(outer)
-	var title := _label("Character", 24, GOLD)
+	var title := _label("Character", 24, UiSkin.CREAM)  # on the ribbon
 	title.add_theme_font_override("font", Hud.TITLE_FONT)
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	outer.add_child(title)
@@ -166,6 +164,11 @@ func _build() -> void:
 			box.add_child(plus)
 			box.set_meta(&"icon", icon)
 			box.set_meta(&"plus", plus)
+			var rarity := Panel.new()
+			rarity.set_anchors_preset(Control.PRESET_FULL_RECT)
+			rarity.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			box.add_child(rarity)
+			box.set_meta(&"rarity", rarity)
 			column.add_child(box)
 			_slots[slot] = box
 
@@ -204,7 +207,5 @@ func _label(text: String, font_size: int, color: Color) -> Label:
 	l.text = text
 	l.add_theme_font_size_override("font_size", font_size)
 	l.add_theme_color_override("font_color", color)
-	l.add_theme_constant_override("outline_size", 3)
-	l.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.7))
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l

@@ -4,18 +4,19 @@ extends CanvasLayer
 ## a comparison against what is worn, and Equip / Enhance / Sell.
 ## The game pauses while it is open.
 
-const GOLD := SettingsMenu.GOLD
-const TEXT := SettingsMenu.TEXT
-const MUTED := SettingsMenu.MUTED
+## Ink colours on parchment (same values as UiSkin.INK_*; literal so they never
+## depend on another script compiling first).
+const GOLD := Color(0.45, 0.24, 0.05)
+const TEXT := Color(0.24, 0.16, 0.09)
+const MUTED := Color(0.45, 0.35, 0.25)
 const SLOT_SIZE := 64.0
 const COLUMNS := 6
 const COIN_ICON := preload("res://assets/ui/icons/two-coins.svg")
-## Kenney Fantasy UI Borders (CC0): ornate frame and divider, tinted gold.
-const FRAME := preload("res://assets/ui/frames/panel_frame.png")
+## Kenney Fantasy UI Borders (CC0): divider line, tinted with ink.
 const DIVIDER := preload("res://assets/ui/frames/divider.png")
 
-const GOOD := Color(0.45, 0.95, 0.45)
-const BAD := Color(1.0, 0.45, 0.4)
+const GOOD := Color(0.12, 0.5, 0.12)
+const BAD := Color(0.75, 0.16, 0.1)
 
 var _root: Control
 var _bag_title: Label
@@ -155,7 +156,7 @@ func _refresh() -> void:
 		_style_slot(_bag_buttons[i], item)
 	for slot in ItemDB.EQUIP_SLOTS:
 		_style_slot(_equip_buttons[slot], Inventory.equipped.get(slot, {}), slot)
-	_bag_title.text = "Inventory   %d / %d" % [Inventory.items.size(), Inventory.SIZE]
+	_bag_title.text = "Tas   %d / %d" % [Inventory.items.size(), Inventory.SIZE]
 	_gold.text = "%d" % Progress.gold
 	_show_detail()
 
@@ -165,13 +166,11 @@ func _style_slot(button: Button, item: Dictionary, empty_slot := "") -> void:
 	button.set_meta(&"item_id", id)
 	var has_item := not item.is_empty()
 	var selected := has_item and id == _selected
-	# Dragon Nest style: dark slot, rarity shown by a thick coloured border.
-	for state in ["normal", "hover", "pressed", "focus"]:
-		var sb := slot_style(item, selected, state == "hover" or state == "pressed")
-		if state == "focus":
-			sb.bg_color = Color(0, 0, 0, 0)
-			sb.shadow_size = 0
-		button.add_theme_stylebox_override(state, sb)
+	# Parchment slot; the rarity shows as a coloured border drawn over it.
+	for state in ["normal", "hover", "pressed"]:
+		button.add_theme_stylebox_override(state, UiSkin.slot(state != "normal"))
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	(button.get_meta(&"rarity") as Panel).add_theme_stylebox_override("panel", UiSkin.rarity_border(item, selected))
 	button.icon = ItemDB.icon(item, empty_slot)
 	# Item art keeps its own colours; empty slots show a faint outline.
 	var tint := Color.WHITE if has_item else Color(1, 1, 1, 0.1)
@@ -199,7 +198,7 @@ func _show_detail() -> void:
 		return
 	var worn := Inventory.is_equipped(id)
 	_detail_title.text = ItemDB.title(item)
-	_detail_title.add_theme_color_override("font_color", ItemDB.color(item))
+	_detail_title.add_theme_color_override("font_color", ItemDB.ink(item))
 	_detail_info.text = "%s   Lv %d   %s%s" % [ItemDB.SLOT_NAMES[item["slot"]], int(item["ilvl"]),
 			ItemDB.RARITY_NAMES[int(item["rarity"])], "   (dipakai)" if worn else ""]
 	var own := ItemDB.stats(item)
@@ -251,16 +250,32 @@ func _build() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.add_child(center)
 	var panel := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.07, 0.06, 0.09, 0.96)
-	style.set_corner_radius_all(6)  # the gold edge comes from the ornate frame
-	style.set_content_margin_all(30)  # room for the ornate frame
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UiSkin.panel("red", 12.0))
 	center.add_child(panel)
-	panel.draw.connect(func() -> void: panel.draw_style_box(frame_style(), Rect2(Vector2.ZERO, panel.size)))
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 12)
+	panel.add_child(outer)
+	# Title on the ribbon, close button at its right end.
+	var head := HBoxContainer.new()
+	outer.add_child(head)
+	var spacer := Control.new()
+	spacer.custom_minimum_size.x = 40.0
+	head.add_child(spacer)
+	var title := _label("Inventory", 24, UiSkin.CREAM)
+	title.add_theme_font_override("font", Hud.TITLE_FONT)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	var close_btn := TextureButton.new()
+	close_btn.texture_normal = UiSkin.texture("close.png")
+	close_btn.custom_minimum_size = Vector2(40.0, 40.0)
+	close_btn.ignore_texture_size = true
+	close_btn.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
+	close_btn.pressed.connect(close)
+	head.add_child(close_btn)
 	var columns := HBoxContainer.new()
 	columns.add_theme_constant_override("separation", 28)
-	panel.add_child(columns)
+	outer.add_child(columns)
 
 	# Left: equipment, gold, details and actions.
 	var left := VBoxContainer.new()
@@ -295,9 +310,9 @@ func _build() -> void:
 	coin.custom_minimum_size = Vector2(22.0, 22.0)
 	coin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	coin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	coin.modulate = Color(1.0, 0.82, 0.3)
+	coin.modulate = Color(0.78, 0.52, 0.08)  # dark gold, readable on parchment
 	gold_row.add_child(coin)
-	_gold = _label("0", 17, Color(1.0, 0.85, 0.4))
+	_gold = _label("0", 17, GOLD)
 	gold_row.add_child(_gold)
 	left.add_child(divider())
 	_detail_title = _label("", 19, TEXT)
@@ -336,7 +351,7 @@ func _build() -> void:
 	var right := VBoxContainer.new()
 	right.add_theme_constant_override("separation", 10)
 	columns.add_child(right)
-	_bag_title = _title("Inventory")
+	_bag_title = _title("Tas")
 	right.add_child(_bag_title)
 	var grid := GridContainer.new()
 	grid.columns = COLUMNS
@@ -363,6 +378,11 @@ func _slot_button() -> Button:
 	b.add_theme_constant_override("icon_max_width", 50)
 	b.focus_mode = Control.FOCUS_NONE
 	b.set_meta(&"item_id", -1)
+	var rarity := Panel.new()  # coloured rarity border, drawn over the slot
+	rarity.set_anchors_preset(Control.PRESET_FULL_RECT)
+	rarity.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(rarity)
+	b.set_meta(&"rarity", rarity)
 	var plus := _label("", 13, Color(1.0, 0.9, 0.5))
 	plus.add_theme_constant_override("outline_size", 4)
 	plus.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.9))
@@ -412,35 +432,6 @@ func _button(text: String) -> Button:
 	b.add_theme_font_size_override("font_size", 15)
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return b
-
-
-## Look of one item slot (also used by the status window): dark box, thick
-## border in the rarity colour, a soft glow for Rare / Epic or the picked item.
-static func slot_style(item: Dictionary, selected := false, hover := false) -> StyleBoxFlat:
-	var sb := StyleBoxFlat.new()
-	sb.bg_color = Color(0.13, 0.12, 0.16) if hover else Color(0.06, 0.055, 0.08)
-	sb.set_corner_radius_all(10)
-	if item.is_empty():
-		sb.border_color = Color(0.32, 0.29, 0.26)
-		sb.set_border_width_all(2)
-		return sb
-	var c := ItemDB.color(item)
-	sb.border_color = c.lerp(Color.WHITE, 0.45) if selected else c
-	sb.set_border_width_all(4 if selected else 3)
-	if int(item.get("rarity", 0)) >= 2 or selected:
-		sb.shadow_color = Color(c.r, c.g, c.b, 0.5)
-		sb.shadow_size = 6
-	return sb
-
-
-## Ornate gold frame (Kenney Fantasy UI Borders) for a window's edge.
-static func frame_style() -> StyleBoxTexture:
-	var sb := StyleBoxTexture.new()
-	sb.texture = FRAME
-	sb.set_texture_margin_all(30.0)
-	sb.modulate_color = GOLD
-	sb.draw_center = false
-	return sb
 
 
 static func divider() -> TextureRect:

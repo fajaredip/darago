@@ -16,6 +16,8 @@ const SLOT_NAMES := {
 const RARITY_NAMES := ["Biasa", "Magic", "Rare", "Epic"]
 ## Dragon Nest colours: Normal white, Magic blue, Rare yellow, Epic purple.
 const RARITY_COLORS: Array[Color] = [Color(0.92, 0.92, 0.9), Color(0.35, 0.62, 1.0), Color(1.0, 0.8, 0.25), Color(0.76, 0.42, 1.0)]
+## The same colours, dark enough to read as text on parchment.
+const RARITY_INK: Array[Color] = [Color(0.3, 0.24, 0.18), Color(0.1, 0.3, 0.75), Color(0.7, 0.42, 0.0), Color(0.48, 0.16, 0.7)]
 ## Main stat multiplier per rarity, and how many bonus lines it rolls.
 const RARITY_MULT := [1.0, 1.15, 1.3, 1.5]
 const RARITY_LINES := [0, 1, 2, 3]
@@ -30,8 +32,8 @@ const NAMES := {
 	"necklace": ["Kalung Tembaga", "Kalung Perak", "Kalung Emas"],
 	"accessory": ["Cincin Tembaga", "Cincin Perak", "Cincin Emas"],
 }
-## Icon file per type, one for each tier (assets/ui/items/<name>.png). Swords and
-## necklaces are renders made with tests/bake_item_icons.gd; armor and rings are painted icons.
+## Icon file per type, one for each tier (assets/ui/items/<name>.png), cut from
+## art_source/ui_parchment/items.png with tests/slice_ui_sheet.gd.
 const TIER_ICONS := {
 	"weapon": ["sword_iron", "sword_steel", "sword_knight"],
 	"helmet": ["helmet_leather", "helmet_chain", "helmet_plate"],
@@ -169,3 +171,8 @@ static func stat_lines(item_stats: Dictionary) -> PackedStringArray:
 		if item_stats.has(stat):
 			lines.append("%s +%d" % [stat, int(item_stats[stat])])
 	return lines
+
+
+## Rarity colour for text on parchment windows.
+static func ink(item: Dictionary) -> Color:
+	return RARITY_INK[clampi(int(item.get("rarity", 0)), 0, RARITY_INK.size() - 1)]

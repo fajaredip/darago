@@ -14,6 +14,9 @@ var _usable := true
 var _denied := false
 var _flash := 0.0
 var _box := StyleBoxFlat.new()
+var _slot_box := UiSkin.slot()
+## Draw the icon in its own colours (item art) instead of tinting it.
+var full_color := false
 var _key_label: Label
 var _cd_label: Label
 var _count_label: Label
@@ -51,8 +54,12 @@ func _init(icon: Texture2D, color: Color, title: String, size_px: float = DEFAUL
 		_name_label = _label(10, Color(1.0, 1.0, 1.0, 0.85), 3)
 		_name_label.text = title
 		_name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		_name_label.position = Vector2(-10.0, slot_size + 1.0)
-		_name_label.size = Vector2(slot_size + 20.0, 13.0)
+		_name_label.position = Vector2(-2.0, slot_size + 1.0)
+		_name_label.size = Vector2(slot_size + 4.0, 13.0)
+		_name_label.clip_text = true  # long skill names must not run into the next slot
+		_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		# Small quickslots show only icon and key, like Dragon Nest; the name would crowd the row.
+		_name_label.visible = slot_size >= 60.0
 		add_child(_name_label)
 
 
@@ -89,21 +96,21 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var rect := Rect2(Vector2.ZERO, Vector2(slot_size, slot_size))
+	# Parchment slot like the windows; the skill colour stays as a thin edge.
+	draw_style_box(_slot_box, rect)
 	if _icon == null:
-		_box.bg_color = Color(0.1, 0.1, 0.12, 0.75)
-		_box.border_color = Color(0.28, 0.28, 0.32, 0.7)
-		draw_style_box(_box, rect)
 		return
 
 	var is_ready := _remaining <= 0.05
 	var edge := _color if is_ready and _usable else _color.darkened(0.45)
 	if _denied:
 		edge = Color(1.0, 0.35, 0.3)
-	_box.bg_color = Color(_color.r * 0.22, _color.g * 0.22, _color.b * 0.22, 0.9)
+	_box.draw_center = false
 	_box.border_color = edge.lerp(Color.WHITE, _flash)
 	draw_style_box(_box, rect)
 
-	var tint := _color.lightened(0.55)
+	# Full-colour art (potions) keeps its colours; white line icons take the skill colour.
+	var tint := Color.WHITE if full_color else _color.lightened(0.55)
 	if _denied:
 		tint = Color(1.0, 0.45, 0.4)
 	elif not _usable:

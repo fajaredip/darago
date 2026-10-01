@@ -6,6 +6,10 @@ extends Node3D
 const PICKUP_RADIUS := 2.4
 const PICKUP_DELAY := 0.45
 const FLY_SPEED := 14.0
+const COIN_SINGLE := preload("res://assets/kaykit/dungeon/coin.gltf.glb")
+const COIN_STACK_SMALL := preload("res://assets/kaykit/dungeon/coin_stack_small.gltf.glb")
+const COIN_STACK_MEDIUM := preload("res://assets/kaykit/dungeon/coin_stack_medium.gltf.glb")
+const CHEST := preload("res://assets/kaykit/dungeon/chest_gold.glb")
 
 var gold := 0
 var item := {}
@@ -43,43 +47,67 @@ static func spawn(pos: Vector3, gold_amount: int, drop: Dictionary) -> Loot:
 
 func _ready() -> void:
 	_visual = Node3D.new()
+	_visual.position.y = -0.3  # the loot node floats; its model stands on the floor
 	add_child(_visual)
-	var mi := MeshInstance3D.new()
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	if item.is_empty():
-		var coin := CylinderMesh.new()
-		coin.top_radius = 0.17
-		coin.bottom_radius = 0.17
-		coin.height = 0.05
-		mi.mesh = coin
-		mi.rotation.x = PI * 0.5
-		mi.material_override = Vfx.glow(Color(1.0, 0.78, 0.25), 1.2)
-	else:
-		var box := BoxMesh.new()
-		box.size = Vector3.ONE * 0.32
-		mi.mesh = box
-		mi.rotation = Vector3(0.6, 0.0, 0.6)
-		var c := ItemDB.color(item)
-		mi.material_override = Vfx.glow(c, 1.6)
-		if int(item["rarity"]) >= 2:
-			# Rare and Epic drops get a light beam, so they are seen from afar.
-			var beam := MeshInstance3D.new()
-			var cyl := CylinderMesh.new()
-			cyl.top_radius = 0.07
-			cyl.bottom_radius = 0.12
-			cyl.height = 3.0
-			beam.mesh = cyl
-			beam.position.y = 1.4
-			beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-			beam.material_override = Vfx.unshaded(Color(c.r, c.g, c.b, 0.35), true)
-			add_child(beam)
-	_visual.add_child(mi)
+		var model := COIN_SINGLE if gold < 10 else (COIN_STACK_SMALL if gold < 30 else COIN_STACK_MEDIUM)
+		_visual.add_child(_fit(model.instantiate(), 0.5))
+		_floor_glow(Color(1.0, 0.78, 0.25, 0.8), 0.32)
+		return
+	# Items drop as a small treasure chest; the rarity shows as coloured light.
+	_visual.add_child(_fit(CHEST.instantiate(), 0.62))
+	var c := ItemDB.color(item)
+	_floor_glow(Color(c.r, c.g, c.b, 0.9), 0.5)
+	if int(item["rarity"]) >= 2:
+		# Rare and Epic drops get a light beam, so they are seen from afar.
+		var beam := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.07
+		cyl.bottom_radius = 0.14
+		cyl.height = 3.0
+		beam.mesh = cyl
+		beam.position.y = 1.2
+		beam.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		beam.material_override = Vfx.unshaded(Color(c.r, c.g, c.b, 0.35), true)
+		add_child(beam)
+
+
+## Scales a KayKit model so its largest side is `size` metres, standing on y = 0.
+func _fit(model: Node3D, size: float) -> Node3D:
+	var box := AABB()
+	var first := true
+	for n in model.find_children("*", "MeshInstance3D", true, false):
+		var mi := n as MeshInstance3D
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var t := Transform3D.IDENTITY
+		var p: Node = mi
+		while p != model:
+			t = (p as Node3D).transform * t
+			p = p.get_parent()
+		box = t * mi.get_aabb() if first else box.merge(t * mi.get_aabb())
+		first = false
+	var s := size / maxf(maxf(box.size.x, box.size.y), maxf(box.size.z, 0.001))
+	model.scale = Vector3.ONE * s
+	var c := box.get_center()
+	model.position = Vector3(-c.x, -box.position.y, -c.z) * s
+	return model
+
+
+## Ring of colour on the floor under the drop (solid, so it reads on light floors).
+func _floor_glow(color: Color, radius: float) -> void:
+	var ring := MeshInstance3D.new()
+	ring.mesh = Vfx.arc_mesh(0.7, 1.0, 360.0, false, 0)
+	ring.scale = Vector3(radius, 1.0, radius)
+	ring.position.y = -0.2  # just above the floor tiles
+	ring.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	ring.material_override = Vfx.unshaded(color)
+	add_child(ring)
 
 
 func _physics_process(delta: float) -> void:
 	_age += delta
-	_visual.rotation.y += delta * 2.5
-	_visual.position.y = sin(_age * 3.0) * 0.08
+	_visual.rotation.y += delta * 1.6
+	_visual.position.y = -0.3 + sin(_age * 3.0) * 0.06
 	var p := Game.player
 	if p == null or not is_instance_valid(p) or p.state == Player.State.DEAD:
 		return

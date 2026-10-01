@@ -8,7 +8,8 @@ const DEFAULT_ICONS: Array[Texture2D] = [
 	preload("res://assets/ui/icons/quick-slash.svg"),
 	preload("res://assets/ui/icons/sword-spin.svg"),
 ]
-const POTION_ICON := preload("res://assets/ui/icons/potion.svg")
+const POTION_HP_ICON := preload("res://assets/ui/items/potion_hp.png")
+const POTION_MP_ICON := preload("res://assets/ui/items/potion_mp.png")
 const DODGE_ICON := preload("res://assets/ui/icons/dodging.svg")
 ## Seconds the full help line stays up before it shrinks to a single hint.
 const HELP_SECONDS := 20.0
@@ -85,9 +86,11 @@ func _ready() -> void:
 	var icon1: Texture2D = skills[1].icon if skills[1].icon else DEFAULT_ICONS[1]
 	_slots.append(_add_slot(row, icon1, skills[1].color, skills[1].display_name))
 	# Slot 3: Potion HP
-	_slots.append(_add_slot(row, POTION_ICON, Color(0.95, 0.25, 0.3), "HP"))
+	_slots.append(_add_slot(row, POTION_HP_ICON, Color(0.95, 0.25, 0.3), "HP"))
+	_slots.back().full_color = true
 	# Slot 4: Potion MP
-	_slots.append(_add_slot(row, POTION_ICON, Color(0.25, 0.6, 1.0), "MP"))
+	_slots.append(_add_slot(row, POTION_MP_ICON, Color(0.25, 0.6, 1.0), "MP"))
+	_slots.back().full_color = true
 	# Slots 5 - 10: Empty slots
 	for i in range(5, 11):
 		_slots.append(_add_slot(row, null, Color(0.3, 0.3, 0.35), ""))

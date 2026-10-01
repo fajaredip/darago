@@ -281,7 +281,7 @@ func _run() -> void:
 	key_c.pressed = true
 	Input.parse_input_event(key_c)
 	await _frames(3)
-	_check(status.is_open() and status._values["Lv."].text == "2", "C opens the character window (Lv %s)" % status._values["Lv."].text)
+	_check(status.is_open() and status._values["Lv."].is_visible_in_tree() and status._values["Lv."].text == "2", "C opens the character window (Lv %s)" % status._values["Lv."].text)
 	await _shot("10d_status")
 	status.toggle()
 	Progress.use_file("user://save_smoke_test.cfg")
@@ -313,7 +313,7 @@ func _run() -> void:
 	key_i.pressed = true
 	Input.parse_input_event(key_i)
 	await _frames(3)
-	_check(bag.is_open() and get_tree().paused, "I opens the inventory and pauses the game")
+	_check(bag.is_open() and get_tree().paused and bag._detail_title.is_visible_in_tree(), "I opens the inventory (on screen) and pauses the game")
 	var sword_id := int(sword.get("id", -1))
 	bag.select(sword_id)
 	await _shot("10e_inventory")

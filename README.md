@@ -7,7 +7,8 @@ dengan tanda serangan yang bisa dihindari. Dibuat dengan Godot 4.7.2 (GDScript).
 ![Warrior berlari di dungeon](docs/run.png)
 ![Combo dengan jejak pedang](docs/combat.png)
 
-Semua aset pihak ketiga berlisensi bebas (CC0 / CC BY / OFL / MIT); daftar lengkapnya di
+Semua aset pihak ketiga berlisensi bebas (CC0 / CC BY / OFL / MIT); ikon item dan UI
+perkamen dibuat dengan ChatGPT khusus untuk proyek ini. Daftar lengkapnya di
 [game/CREDITS.md](game/CREDITS.md). Tidak ada aset, nama, atau desain dari
 Dragon Nest.
 

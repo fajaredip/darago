@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://d18jkmv8dre4u"
-path="res://.godot/imported/potion.svg-74436ec5e97854fb42133371f7227522.ctex"
+uid="uid://c16d3caiaqlx6"
+path="res://.godot/imported/potion_mp.png-a916bf04652dc6203d6de6cf4cbb9273.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/icons/potion.svg"
-dest_files=["res://.godot/imported/potion.svg-74436ec5e97854fb42133371f7227522.ctex"]
+source_file="res://assets/ui/items/potion_mp.png"
+dest_files=["res://.godot/imported/potion_mp.png-a916bf04652dc6203d6de6cf4cbb9273.ctex"]
 
 [params]
 
@@ -38,6 +38,3 @@ process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
 process/size_limit=0
 detect_3d/compress_to=1
-svg/scale=1.0
-editor/scale_with_editor_scale=false
-editor/convert_colors_with_editor_theme=false

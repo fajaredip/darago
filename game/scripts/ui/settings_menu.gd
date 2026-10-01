@@ -4,9 +4,10 @@ extends CanvasLayer
 ## sensitivity), Game Setting (volumes) and Exit Game. Every change is applied
 ## and saved at once through the Settings autoload.
 
-const GOLD := Color(0.86, 0.7, 0.38)
-const TEXT := Color(0.95, 0.92, 0.86)
-const MUTED := Color(0.72, 0.68, 0.62)
+## Ink colours on the parchment panels (shared by the other windows).
+const GOLD := Color(0.45, 0.24, 0.05)
+const TEXT := Color(0.24, 0.16, 0.09)
+const MUTED := Color(0.45, 0.35, 0.25)
 const VOLUME_ROWS := [[&"Master", "Volume utama"], [&"Music", "Musik"], [&"SFX", "Efek suara"]]
 
 var _root: Control
@@ -214,6 +215,10 @@ func _build_main(parent: Control) -> Control:
 	for item in items:
 		var b := _button(item[0], 22)
 		b.custom_minimum_size = Vector2(0, 52)
+		if item[0] == "Lanjutkan":
+			b.theme_type_variation = &"ButtonGreen"
+		elif item[0] == "Exit Game":
+			b.theme_type_variation = &"ButtonRed"
 		b.pressed.connect(item[1])
 		page.add_child(b)
 		if _first_button == null:
@@ -333,6 +338,7 @@ func _build_game(parent: Control) -> Control:
 	diff_note.custom_minimum_size.x = 420.0
 	page.add_child(diff_note)
 	var wipe := _button("Hapus data save", 16)
+	wipe.theme_type_variation = &"ButtonRed"
 	wipe.pressed.connect(func() -> void:
 		_ask("Hapus semua progres? Level, item, gold dan tingkat kesulitan kembali ke awal.", "Ya, hapus", func() -> void:
 			Progress.reset()
@@ -355,7 +361,7 @@ func _build_confirm() -> Control:
 	dim.color = Color(0, 0, 0, 0.45)
 	_fill(dim)
 	overlay.add_child(dim)
-	var box := _panel(overlay, 380.0)
+	var box := _panel(overlay, 380.0, "plain")
 	var question := _label("", 22, TEXT)
 	question.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_confirm_question = question
@@ -364,6 +370,7 @@ func _build_confirm() -> Control:
 	var buttons := HBoxContainer.new()
 	buttons.add_theme_constant_override("separation", 12)
 	var yes := _button("Ya, keluar", 18)
+	yes.theme_type_variation = &"ButtonRed"
 	yes.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	yes.pressed.connect(func() -> void:
 		overlay.visible = false
@@ -380,18 +387,12 @@ func _build_confirm() -> Control:
 
 
 ## Centered bordered panel; returns the VBox to fill.
-func _panel(parent: Control, width: float) -> VBoxContainer:
+func _panel(parent: Control, width: float, kind := "green") -> VBoxContainer:
 	var center := CenterContainer.new()
 	_fill(center)
 	parent.add_child(center)
 	var panel := PanelContainer.new()
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.07, 0.06, 0.09, 0.95)
-	style.border_color = GOLD
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(10)
-	style.set_content_margin_all(24)
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", UiSkin.panel(kind, 12.0))
 	center.add_child(panel)
 	var box := VBoxContainer.new()
 	box.custom_minimum_size = Vector2(width, 0)
@@ -400,32 +401,13 @@ func _panel(parent: Control, width: float) -> VBoxContainer:
 	return box
 
 
-## Dark buttons with gold borders, shared by the game's windows.
+## Parchment theme shared by the game's windows (see UiSkin).
 static func make_theme() -> Theme:
-	var theme := Theme.new()
-	var states := {
-		"normal": [Color(0.15, 0.13, 0.17), Color(0.45, 0.38, 0.26)],
-		"hover": [Color(0.22, 0.19, 0.24), GOLD],
-		"pressed": [Color(0.32, 0.26, 0.16), GOLD],
-		"focus": [Color(0, 0, 0, 0), GOLD],
-	}
-	for state in states:
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = states[state][0]
-		sb.border_color = states[state][1]
-		sb.set_border_width_all(1 if state != "focus" else 2)
-		sb.set_corner_radius_all(6)
-		sb.set_content_margin_all(6)
-		theme.set_stylebox(state, "Button", sb)
-	theme.set_color("font_color", "Button", TEXT)
-	theme.set_color("font_hover_color", "Button", Color(1.0, 0.95, 0.8))
-	theme.set_color("font_pressed_color", "Button", Color(1.0, 0.9, 0.6))
-	theme.set_color("font_focus_color", "Button", TEXT)
-	return theme
+	return UiSkin.theme()
 
 
 func _title(text: String) -> Label:
-	var l := _label(text, 28, GOLD)
+	var l := _label(text, 26, UiSkin.CREAM)  # sits on the panel's ribbon
 	l.add_theme_font_override("font", Hud.TITLE_FONT)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	return l
